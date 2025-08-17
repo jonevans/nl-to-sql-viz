@@ -29,7 +29,8 @@ router.post('/',
     res.json({
       ...result,
       executedAt: new Date().toISOString(),
-      database: database || 'hardware_store_db'
+      database: database || 'hardware_store_db',
+      security: result.securityInfo
     });
   })
 );

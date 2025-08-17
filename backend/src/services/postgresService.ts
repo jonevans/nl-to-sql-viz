@@ -1,7 +1,9 @@
 import { Pool, PoolClient } from 'pg';
+import { SQLSecurityService } from './sqlSecurityService';
 
 class PostgresService {
   private pool: Pool;
+  private securityService: SQLSecurityService;
 
   constructor() {
     console.log('DATABASE_URL:', process.env.DATABASE_URL);
@@ -16,6 +18,8 @@ class PostgresService {
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
     });
+
+    this.securityService = SQLSecurityService.getInstance();
 
     // Test connection on startup
     this.testConnection();
@@ -32,41 +36,66 @@ class PostgresService {
     }
   }
 
-  async executeQuery(sql: string): Promise<{
+  async executeQuery(sql: string, params: any[] = []): Promise<{
     data: any[];
     columns: string[];
     rowCount: number;
     executionTime: number;
+    securityInfo: {
+      isSecure: boolean;
+      complexity: number;
+      warnings: string[];
+    };
   }> {
     const startTime = Date.now();
     let client: PoolClient | null = null;
 
     try {
-      client = await this.pool.connect();
+      console.log(`Validating SQL: ${sql.substring(0, 100)}...`);
       
-      // Security: Basic SQL injection prevention
-      // In production, you'd want more sophisticated validation
-      const dangerousKeywords = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'CREATE', 'TRUNCATE'];
-      const upperSQL = sql.toUpperCase();
+      // Step 1: Comprehensive security validation
+      const validation = await this.securityService.validateAndSanitizeSQL(sql);
       
-      for (const keyword of dangerousKeywords) {
-        if (upperSQL.includes(keyword)) {
-          throw new Error(`Dangerous SQL operation detected: ${keyword}. Only SELECT queries are allowed.`);
-        }
+      if (!validation.isValid) {
+        const errorMessage = `SQL security validation failed:\n${validation.errors.join('\n')}`;
+        console.error(errorMessage);
+        throw new Error(errorMessage);
       }
 
-      const result = await client.query(sql);
+      // Step 2: Use sanitized SQL
+      const sanitizedSQL = validation.sanitizedSQL!;
+      console.log(`Executing sanitized SQL with complexity: ${validation.complexity}`);
+
+      // Step 3: Execute with connection pooling
+      client = await this.pool.connect();
+      
+      // Step 4: Execute the validated and sanitized query
+      const result = await client.query(sanitizedSQL, params);
       const executionTime = Date.now() - startTime;
+
+      console.log(`Query executed successfully in ${executionTime}ms, returned ${result.rowCount} rows`);
 
       return {
         data: result.rows,
         columns: result.fields.map(field => field.name),
         rowCount: result.rowCount || 0,
-        executionTime
+        executionTime,
+        securityInfo: {
+          isSecure: true,
+          complexity: validation.complexity,
+          warnings: validation.warnings
+        }
       };
     } catch (error: any) {
-      console.error('SQL Execution Error:', error);
-      throw new Error(`SQL execution failed: ${error.message}`);
+      const executionTime = Date.now() - startTime;
+      console.error(`SQL Execution Error after ${executionTime}ms:`, error.message);
+      
+      // Provide minimal error information to prevent information leakage
+      if (error.message.includes('security validation failed')) {
+        throw error; // Security errors can be shown
+      } else {
+        throw new Error('Query execution failed. Please check your SQL syntax and try again.');
+      }
     } finally {
       if (client) {
         client.release();
@@ -74,33 +103,50 @@ class PostgresService {
     }
   }
 
-  async validateSQL(sql: string): Promise<{ valid: boolean; message: string }> {
+  async validateSQL(sql: string): Promise<{ 
+    valid: boolean; 
+    message: string; 
+    complexity?: number;
+    warnings?: string[];
+  }> {
     try {
-      // Basic validation - check for dangerous operations
-      const dangerousKeywords = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'CREATE', 'TRUNCATE'];
-      const upperSQL = sql.toUpperCase();
+      console.log(`Validating SQL: ${sql.substring(0, 100)}...`);
       
-      for (const keyword of dangerousKeywords) {
-        if (upperSQL.includes(keyword)) {
-          return {
-            valid: false,
-            message: `Dangerous SQL operation detected: ${keyword}. Only SELECT queries are allowed.`
-          };
-        }
+      // Use comprehensive security validation
+      const validation = await this.securityService.validateAndSanitizeSQL(sql);
+      
+      if (!validation.isValid) {
+        return {
+          valid: false,
+          message: validation.errors.join('; ')
+        };
       }
 
-      // Try to explain the query (doesn't execute it)
+      // Additional PostgreSQL-specific validation using EXPLAIN
       const client = await this.pool.connect();
       try {
-        await client.query(`EXPLAIN ${sql}`);
+        await client.query(`EXPLAIN ${validation.sanitizedSQL}`);
         client.release();
-        return { valid: true, message: 'SQL is valid' };
+        
+        return { 
+          valid: true, 
+          message: 'SQL is valid and secure',
+          complexity: validation.complexity,
+          warnings: validation.warnings
+        };
       } catch (error: any) {
         client.release();
-        return { valid: false, message: error.message };
+        return { 
+          valid: false, 
+          message: `PostgreSQL validation failed: ${error.message}` 
+        };
       }
     } catch (error: any) {
-      return { valid: false, message: error.message };
+      console.error('SQL validation error:', error);
+      return { 
+        valid: false, 
+        message: 'Validation failed. Please check your SQL syntax.' 
+      };
     }
   }
 

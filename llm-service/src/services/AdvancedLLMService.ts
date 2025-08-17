@@ -14,6 +14,7 @@ import { DataAnalysisService } from './DataAnalysisService';
 import { ChartConfigGenerator } from './ChartConfigGenerator';
 import { QuerySuggestionEngine } from './QuerySuggestionEngine';
 import { ErrorHandler } from './ErrorHandler';
+import { LLMOutputSanitizer } from './LLMOutputSanitizer';
 import { v4 as uuidv4 } from 'uuid';
 
 export class AdvancedLLMService {
@@ -27,6 +28,7 @@ export class AdvancedLLMService {
   private chartConfigGenerator: ChartConfigGenerator;
   private suggestionEngine: QuerySuggestionEngine;
   private errorHandler: ErrorHandler;
+  private outputSanitizer: LLMOutputSanitizer;
 
   private constructor() {
     this.openai = new OpenAI({
@@ -44,6 +46,7 @@ export class AdvancedLLMService {
     this.chartConfigGenerator = ChartConfigGenerator.getInstance();
     this.suggestionEngine = QuerySuggestionEngine.getInstance();
     this.errorHandler = ErrorHandler.getInstance();
+    this.outputSanitizer = LLMOutputSanitizer.getInstance();
   }
 
   static getInstance(): AdvancedLLMService {
@@ -270,7 +273,7 @@ export class AdvancedLLMService {
       throw new Error('No response from OpenAI');
     }
 
-    return this.parseGeneratedResponse(content);
+    return await this.parseGeneratedResponse(content);
   }
 
   private async generateWithAnthropic(systemPrompt: string, userPrompt: string, model: string): Promise<{
@@ -292,33 +295,49 @@ export class AdvancedLLMService {
       throw new Error('Unexpected response type from Anthropic');
     }
 
-    return this.parseGeneratedResponse(content.text);
+    return await this.parseGeneratedResponse(content.text);
   }
 
-  private parseGeneratedResponse(content: string): {
+  private async parseGeneratedResponse(content: string): Promise<{
     sql: string;
     confidence: number;
     explanation: string;
-  } {
-    // Extract SQL
-    const sqlMatch = content.match(/SQL:\s*(.+?)(?:\n(?:REASONING|CONFIDENCE|EXPLANATION|$))/s);
-    if (!sqlMatch) {
-      throw new Error('Could not extract SQL from LLM response');
+  }> {
+    try {
+      // Step 1: Sanitize LLM output for security
+      console.log('Sanitizing LLM output for security...');
+      const sanitizationResult = await this.outputSanitizer.sanitizeLLMOutput(content);
+      
+      if (!sanitizationResult.isSecure) {
+        const errorMsg = `LLM output failed security validation: ${sanitizationResult.securityWarnings.join('; ')}`;
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      if (sanitizationResult.securityWarnings.length > 0) {
+        console.warn('Security warnings during LLM output sanitization:', sanitizationResult.securityWarnings);
+      }
+
+      // Step 2: Extract confidence and explanation from original content
+      const confidenceMatch = content.match(/CONFIDENCE:\s*([0-9.]+)/);
+      let confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0.8;
+
+      // Adjust confidence based on sanitization results
+      confidence = Math.min(confidence, sanitizationResult.confidence);
+
+      const explanationMatch = content.match(/(?:REASONING|EXPLANATION):\s*(.+?)(?:\n(?:CONFIDENCE|$))/s);
+      const explanation = explanationMatch ? explanationMatch[1].trim() : 'SQL query generated and sanitized successfully';
+
+      return {
+        sql: sanitizationResult.sanitizedSQL,
+        confidence: Math.max(0.1, Math.min(1.0, confidence)),
+        explanation
+      };
+
+    } catch (error: any) {
+      console.error('Failed to parse and sanitize LLM response:', error.message);
+      throw new Error(`LLM response processing failed: ${error.message}`);
     }
-
-    // Extract confidence
-    const confidenceMatch = content.match(/CONFIDENCE:\s*([0-9.]+)/);
-    const confidence = confidenceMatch ? parseFloat(confidenceMatch[1]) : 0.8;
-
-    // Extract explanation
-    const explanationMatch = content.match(/(?:REASONING|EXPLANATION):\s*(.+?)(?:\n(?:CONFIDENCE|$))/s);
-    const explanation = explanationMatch ? explanationMatch[1].trim() : 'SQL query generated successfully';
-
-    return {
-      sql: sqlMatch[1].trim(),
-      confidence: Math.max(0.1, Math.min(1.0, confidence)),
-      explanation
-    };
   }
 
   async refineQuery(
