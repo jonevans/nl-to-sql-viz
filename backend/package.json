@@ -25,6 +25,7 @@
     "mongodb": "^6.0.0",
     "mongoose": "^7.5.0",
     "node-sql-parser": "^5.3.11",
+    "openai": "^4.104.0",
     "pg": "^8.16.3",
     "pg-format": "^1.0.4",
     "winston": "^3.10.0"

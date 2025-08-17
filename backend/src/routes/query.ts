@@ -5,6 +5,7 @@ import { querySchema } from '../utils/validation';
 import { llmRateLimiter } from '../middleware/rateLimiter';
 import { LLMService } from '../services/llmService';
 import { postgresService } from '../services/postgresService';
+import { SchemaAdapter } from '../services/schemaAdapter';
 import Query from '../models/Query';
 
 const router = express.Router();
@@ -16,16 +17,24 @@ router.post('/',
   asyncHandler(async (req: Request, res: Response) => {
     const { query, provider, model, userId } = req.body;
 
-    // Get database schema
-    const schema = await postgresService.getSchema();
+    // Get database schema and convert to LLM format
+    const postgresSchema = await postgresService.getSchema();
+    const llmSchema = SchemaAdapter.convertPostgresToLLMFormat(postgresSchema);
+    console.log('📊 Schema tables:', llmSchema.tables.map(t => t.name));
+    console.log('📊 Orders table columns:', llmSchema.tables.find(t => t.name === 'orders')?.columns.map(c => c.name));
 
-    // Generate SQL using LLM with schema context (get instance inside route handler)
+    // Generate SQL using integrated LLM service with schema context
     const llmService = LLMService.getInstance();
     const llmResponse = await llmService.generateSQL({
       query,
       provider,
       model,
-      schema
+      schema: llmSchema,
+      options: {
+        enableMultiStep: true,
+        includeExplanation: true,
+        suggestVisualization: false
+      }
     });
 
     // Save query to database

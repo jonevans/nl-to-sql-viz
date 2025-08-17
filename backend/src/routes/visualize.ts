@@ -3,34 +3,72 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { validateRequest } from '../utils/validation';
 import { visualizeSchema } from '../utils/validation';
 import { readOnlyRateLimiter } from '../middleware/rateLimiter';
-import { VisualizationService } from '../services/visualizationService';
+import { LLMService } from '../services/llmService';
 
 const router = express.Router();
-const visualizationService = VisualizationService.getInstance();
 
-// POST /api/visualize - Analyze data and suggest visualizations
+// POST /api/visualize - Analyze data and suggest visualizations (via LLM service)
 router.post('/',
   readOnlyRateLimiter,
   validateRequest(visualizeSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { data, columns, chartType, userId } = req.body;
 
-    // Analyze data and generate suggestions
-    const analysis = await visualizationService.analyzeAndSuggest(data, columns);
+    // Forward to LLM service for analysis
+    const llmService = LLMService.getInstance();
+    
+    try {
+      // Use LLM service's analyze endpoint
+      const analysisResponse = await llmService.analyzeData(data, 
+        `Analyze this data with columns: ${columns.join(', ')}`
+      );
+      
+      // Parse the response and format it for the frontend
+      const analysis = {
+        chartType: chartType || analysisResponse.chartType || 'table',
+        reasoning: analysisResponse.summary || 'Data analysis complete',
+        confidence: analysisResponse.confidence || 0.8,
+        configurations: {
+          chartjs: { responsive: true },
+          recharts: { width: 600, height: 400 }
+        },
+        suggestions: [
+          {
+            type: 'table',
+            reasoning: 'Default safe option for all data',
+            confidence: 0.6
+          }
+        ]
+      };
 
-    // If specific chart type requested, prioritize it
-    if (chartType) {
-      const specificSuggestion = analysis.suggestions.find(s => s.type === chartType);
-      if (specificSuggestion) {
-        analysis.recommended = specificSuggestion;
-      }
+      res.json({
+        ...analysis,
+        timestamp: new Date().toISOString(),
+        userId: userId || null
+      });
+    } catch (error: any) {
+      console.error('Visualization analysis failed:', error);
+      
+      // Fallback to simple analysis
+      res.json({
+        chartType: 'table',
+        reasoning: 'Analysis service unavailable, defaulting to table view',
+        confidence: 0.3,
+        configurations: {
+          chartjs: { responsive: true },
+          recharts: { width: 600, height: 400 }
+        },
+        suggestions: [
+          {
+            type: 'table',
+            reasoning: 'Safe fallback option',
+            confidence: 0.5
+          }
+        ],
+        timestamp: new Date().toISOString(),
+        userId: userId || null
+      });
     }
-
-    res.json({
-      ...analysis,
-      timestamp: new Date().toISOString(),
-      userId: userId || null
-    });
   })
 );
 
@@ -96,22 +134,12 @@ router.post('/preview',
       return res.status(400).json({ error: 'Chart type is required for preview' });
     }
 
-    // Generate specific configuration for the requested chart type
-    const analysis = await visualizationService.analyzeAndSuggest(data, columns);
-    const suggestion = analysis.suggestions.find(s => s.type === chartType);
-
-    if (!suggestion) {
-      return res.status(400).json({ 
-        error: `Chart type '${chartType}' not suitable for this data` 
-      });
-    }
-
-    // Generate preview configuration
+    // Generate preview configuration (simplified since we removed the old service)
     const previewConfig = {
-      type: suggestion.type,
-      title: suggestion.title,
-      xAxis: suggestion.xAxis,
-      yAxis: suggestion.yAxis,
+      type: chartType,
+      title: `${chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart`,
+      xAxis: columns[0] || 'x',
+      yAxis: columns[1] || 'y',
       data: data.slice(0, 100), // Limit preview data
       config: {
         responsive: true,
@@ -119,10 +147,10 @@ router.post('/preview',
         plugins: {
           title: {
             display: true,
-            text: suggestion.title
+            text: `${chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart`
           },
           legend: {
-            display: suggestion.type === 'pie' || suggestion.type === 'line'
+            display: chartType === 'pie' || chartType === 'line'
           }
         }
       }
@@ -130,8 +158,8 @@ router.post('/preview',
 
     res.json({
       preview: previewConfig,
-      reasoning: suggestion.reasoning,
-      confidence: suggestion.confidence
+      reasoning: `Generating ${chartType} chart preview`,
+      confidence: 0.8
     });
   })
 );

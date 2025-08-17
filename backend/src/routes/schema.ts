@@ -4,6 +4,7 @@ import { validateQuery } from '../utils/validation';
 import { paginationSchema } from '../utils/validation';
 import { readOnlyRateLimiter } from '../middleware/rateLimiter';
 import { postgresService } from '../services/postgresService';
+import { SchemaAdapter } from '../services/schemaAdapter';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -22,19 +23,20 @@ const tableQuerySchema = Joi.object({
   database: Joi.string().optional().default('default')
 });
 
-// GET /api/schema - Get database schema
+// GET /api/schema - Get database schema (in LLM-compatible format)
 router.get('/',
   readOnlyRateLimiter,
   validateQuery(databaseQuerySchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const schema = await postgresService.getSchema();
+    const postgresSchema = await postgresService.getSchema();
+    const llmSchema = SchemaAdapter.convertPostgresToLLMFormat(postgresSchema);
     
     res.json({
       database: 'hardware_store_db',
-      tables: schema.tables,
+      ...llmSchema,
       lastUpdated: new Date().toISOString(),
-      tableCount: schema.tables.length,
-      totalColumns: schema.tables.reduce((sum, table) => sum + table.columns.length, 0)
+      tableCount: llmSchema.tables.length,
+      totalColumns: llmSchema.tables.reduce((sum, table) => sum + table.columns.length, 0)
     });
   })
 );

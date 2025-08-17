@@ -4,10 +4,10 @@ import { validateQuery } from '../utils/validation';
 import { suggestionsSchema } from '../utils/validation';
 import { readOnlyRateLimiter } from '../middleware/rateLimiter';
 import Query from '../models/Query';
-import { SchemaService } from '../services/schemaService';
+import { postgresService } from '../services/postgresService';
+import { SchemaAdapter } from '../services/schemaAdapter';
 
 const router = express.Router();
-const schemaService = SchemaService.getInstance();
 
 // GET /api/suggestions - Get real-time query suggestions
 router.get('/',
@@ -151,7 +151,10 @@ router.get('/context',
       return res.status(400).json({ error: 'Table name is required' });
     }
     
-    const tableInfo = await schemaService.getTableInfo(table as string, database as string);
+    // Get schema and find the table
+    const postgresSchema = await postgresService.getSchema();
+    const llmSchema = SchemaAdapter.convertPostgresToLLMFormat(postgresSchema);
+    const tableInfo = llmSchema.tables.find(t => t.name === table);
     
     if (!tableInfo) {
       return res.status(404).json({ error: 'Table not found' });

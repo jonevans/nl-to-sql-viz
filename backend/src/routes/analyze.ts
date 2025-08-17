@@ -320,10 +320,10 @@ Suggest 1-2 follow-up questions or analyses that would provide deeper insights.
 
 Keep each section concise but insightful. Use business language, not technical jargon. Focus on actionable insights that drive business decisions.`;
 
-    // Generate summary using the dedicated text analysis method
-    const summary = await llmService.generateTextAnalysis(prompt);
+    // Generate summary using the LLM service
+    const analysisResult = await llmService.analyzeData(data, originalQuery);
     
-    return summary || 'Professional data analysis could not be generated at this time.';
+    return analysisResult.summary || 'Professional data analysis could not be generated at this time.';
     
   } catch (error) {
     console.error('Summary generation failed:', error);

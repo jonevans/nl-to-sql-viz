@@ -5,24 +5,24 @@ A full-stack application that converts natural language queries into SQL and vis
 ## Architecture
 
 - **Frontend**: React/Next.js application for user interface
-- **Backend**: Node.js/Express API server
-- **Database**: Integration layer for various database connections
-- **LLM Service**: Natural language processing and SQL generation
+- **Backend**: Node.js/Express API server with integrated OpenAI for SQL generation
+- **Database**: PostgreSQL for data storage, MongoDB for query history
 - **Visualization**: Reusable chart and graph component library
 
 ## Getting Started
 
-Each service can be run independently during development:
+See [SETUP.md](SETUP.md) for environment configuration.
 
 ```bash
-# Frontend
-cd frontend && npm run dev
+# Install dependencies
+npm install
 
-# Backend
-cd backend && npm run dev
+# Run both frontend and backend
+npm run dev
 
-# LLM Service
-cd llm-service && npm run dev
+# Or run services individually:
+cd frontend && npm run dev  # Frontend on http://localhost:3000
+cd backend && npm run dev   # Backend on http://localhost:8000
 ```
 
 ## Project Structure
@@ -30,9 +30,8 @@ cd llm-service && npm run dev
 ```
 nl-to-sql-viz/
 ├── frontend/          # React/Next.js frontend
-├── backend/           # Node.js/Express API
+├── backend/           # Node.js/Express API with OpenAI integration
 ├── database/          # Database integration layer
-├── llm-service/       # LLM integration service
 ├── visualization-lib/ # Reusable visualization components
 └── docs/             # Documentation
 ```
