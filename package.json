@@ -1,0 +1,25 @@
+{
+  "name": "nl-to-sql-viz",
+  "version": "1.0.0",
+  "description": "Natural Language to SQL Visualization App",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "llm-service",
+    "visualization-lib"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=frontend\" \"npm run dev --workspace=backend\" \"npm run dev --workspace=llm-service\"",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "install:all": "npm install --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

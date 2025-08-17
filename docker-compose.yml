@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://backend:3001
+      - LLM_SERVICE_URL=http://llm-service:3002
+    depends_on:
+      - backend
+      - llm-service
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  backend:
+    build: ./backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=mongodb
+      - DB_PORT=27017
+      - DB_NAME=nlsql_db
+      - DB_USERNAME=admin
+      - DB_PASSWORD=password
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/nlsql_db
+      - LLM_SERVICE_URL=http://llm-service:3002
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  llm-service:
+    build: ./llm-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    volumes:
+      - ./llm-service:/app
+      - /app/node_modules
+
+  mongodb:
+    image: mongo:7
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=nlsql_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mongodb_data:
+  redis_data:

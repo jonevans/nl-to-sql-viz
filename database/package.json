@@ -1,0 +1,21 @@
+{
+  "name": "nl-to-sql-viz-database",
+  "version": "1.0.0",
+  "description": "Database integration layer for Natural Language to SQL Visualization",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "migrate": "node dist/migrate.js",
+    "seed": "node dist/seed.js",
+    "reset": "npm run migrate && npm run seed"
+  },
+  "dependencies": {
+    "mongodb": "^6.0.0",
+    "mongoose": "^7.5.0"
+  },
+  "devDependencies": {
+    "@types/mongodb": "^4.0.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
