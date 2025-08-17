@@ -1,0 +1,13 @@
+Test Data:
+
+All files csv, pipe delimited
+
+Sales Order:
+•	Data based on Order Creation Date within 2023. Will have Order dates within the data that are written into the future (sometimes the past) as the Order Date is a user defined date field.
+
+
+Joins:
+•	Sales Order & Product:
+	o	SalesOrder.ProductKey = Product.ProductKey
+•	Sales Order & Customer:
+	o	SalesOrder.CustomerKey = Customer.CustomerKey

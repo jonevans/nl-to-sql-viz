@@ -4,8 +4,8 @@ import '@/styles/globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'NL to SQL Visualization',
-  description: 'Convert natural language to SQL queries with interactive visualizations',
+  title: 'Colony Hardware Analytics',
+  description: 'Natural language analytics for Colony Hardware sales and inventory data',
 };
 
 export default function RootLayout({

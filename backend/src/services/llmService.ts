@@ -100,12 +100,61 @@ export class LLMService {
   }
 
   private buildSystemPrompt(schema?: any): string {
+    // Check if we're using Colony Hardware database
+    const dbName = process.env.DB_NAME;
+    const isColonyHardware = dbName === 'colony_hardware_db';
+    
     let prompt = `You are a PostgreSQL SQL expert. Convert natural language queries to SQL.
 Generate only SELECT statements. Return only the SQL query without explanations.
 Use the exact table and column names from the schema below.
 When searching text fields, consider using ILIKE for case-insensitive partial matching when appropriate.`;
 
-    if (schema?.tables) {
+    if (isColonyHardware) {
+      prompt += `
+
+Colony Hardware Database Schema:
+
+Tables:
+1. products (68,830 hardware products)
+   - product_key (INTEGER, PRIMARY KEY)
+   - source_system_key (INTEGER)
+   - product_id (VARCHAR)
+   - product_description (TEXT)
+   - product_category (VARCHAR) - Categories like "CLEANING EQUIPMENT & SUPPLIES", "FASTENERS", etc.
+   - product_profile (VARCHAR)
+
+2. customers (14,804 customers)
+   - customer_key (INTEGER, PRIMARY KEY)
+   - source_system_key (INTEGER)
+   - customer_name (VARCHAR)
+   - city (VARCHAR)
+   - state (VARCHAR) - Primarily Michigan and surrounding states
+   - cust_pricing_class (VARCHAR)
+   - cust_trade_class (VARCHAR)
+   - restoration_refinery_cust (CHAR)
+
+3. sales_orders (1,795,100 sales from 2023)
+   - id (SERIAL, PRIMARY KEY)
+   - customer_key (INTEGER) - References customers.customer_key
+   - product_key (INTEGER) - References products.product_key
+   - source_system_key (INTEGER)
+   - order_date (DATE) - Orders from 2023
+   - order_number (VARCHAR)
+   - order_line_number (INTEGER)
+   - unit_price (DECIMAL)
+   - quantity_ordered (DECIMAL)
+   - ext_price (DECIMAL)
+   - ext_cost (DECIMAL)
+
+Key Relationships:
+- sales_orders.customer_key -> customers.customer_key
+- sales_orders.product_key -> products.product_key
+
+Important Notes:
+- Use ILIKE for case-insensitive text searches
+- Some keys may be -1 indicating missing/unknown data
+- Order dates are from 2023`;
+    } else if (schema?.tables) {
       prompt += '\n\nDatabase Schema:\n';
       for (const table of schema.tables) {
         const tableName = table.name || table.table_name;

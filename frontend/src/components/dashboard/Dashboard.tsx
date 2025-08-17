@@ -203,10 +203,10 @@ export const Dashboard: React.FC = () => {
       {/* Header Section */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Data Analytics Dashboard
+          Colony Hardware Analytics
         </h1>
         <p className="text-gray-600">
-          Ask questions in natural language and get instant insights
+          Explore sales, inventory, and customer insights with natural language
         </p>
       </div>
 
@@ -230,8 +230,8 @@ export const Dashboard: React.FC = () => {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-8 h-8 bg-red-100 rounded-lg">
-                <Database className="h-4 w-4 text-red-600" />
+              <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
+                <Database className="h-4 w-4 text-blue-600" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -327,8 +327,8 @@ export const Dashboard: React.FC = () => {
       {!queryResult && !isProcessing && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md">
-            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <Database className="h-8 w-8 text-red-600" />
+            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+              <Database className="h-8 w-8 text-blue-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               Ready to Analyze Your Data
@@ -340,9 +340,9 @@ export const Dashboard: React.FC = () => {
             <div className="flex flex-col space-y-2 text-sm text-gray-500">
               <p>Example questions:</p>
               <ul className="space-y-1">
-                <li>• "Show me sales by region this year"</li>
-                <li>• "What are the top 10 products by revenue?"</li>
-                <li>• "How has customer growth changed over time?"</li>
+                <li>• "Show me top selling products in Michigan"</li>
+                <li>• "What are the sales trends for cleaning supplies?"</li>
+                <li>• "Which customers have the highest order volumes?"</li>
               </ul>
             </div>
           </div>
