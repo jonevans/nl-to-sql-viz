@@ -201,13 +201,28 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header Section */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Colony Hardware Analytics
-        </h1>
-        <p className="text-gray-600">
-          Explore sales, inventory, and customer insights with natural language
-        </p>
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <img 
+              src="/colony_logo.png" 
+              alt="Colony Hardware" 
+              className="h-10 w-auto"
+            />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Sales Advisor
+              </h1>
+              <p className="text-sm text-gray-600">
+                Ask questions, get sales insights instantly
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-medium text-gray-900">J. Strummer</p>
+            <p className="text-xs text-gray-500">Senior Sales Rep</p>
+          </div>
+        </div>
       </div>
 
       {/* Query Input Section */}
@@ -230,8 +245,8 @@ export const Dashboard: React.FC = () => {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
-                <Database className="h-4 w-4 text-blue-600" />
+              <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-lg">
+                <Database className="h-4 w-4 text-[#2D7D32]" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
@@ -327,11 +342,11 @@ export const Dashboard: React.FC = () => {
       {!queryResult && !isProcessing && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md">
-            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <Database className="h-8 w-8 text-blue-600" />
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <Database className="h-8 w-8 text-[#2D7D32]" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Ready to Analyze Your Data
+              Colony Hardware Data Analytics
             </h3>
             <p className="text-gray-600 mb-6">
               Start by asking a question about your data in natural language. 

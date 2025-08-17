@@ -128,7 +128,7 @@ Tables:
    - source_system_key (INTEGER)
    - customer_name (VARCHAR)
    - city (VARCHAR)
-   - state (VARCHAR) - Primarily Michigan and surrounding states
+   - state (VARCHAR) - State codes like 'MI' for Michigan, 'OH' for Ohio, etc. NOT full state names
    - cust_pricing_class (VARCHAR)
    - cust_trade_class (VARCHAR)
    - restoration_refinery_cust (CHAR)
@@ -151,7 +151,9 @@ Key Relationships:
 - sales_orders.product_key -> products.product_key
 
 Important Notes:
-- Use ILIKE for case-insensitive text searches
+- States are stored as 2-letter codes (e.g., 'MI' NOT 'Michigan', 'OH' NOT 'Ohio')
+- When users ask about "Michigan", use state = 'MI' or state = 'Mi'
+- Use ILIKE for case-insensitive text searches on product descriptions
 - Some keys may be -1 indicating missing/unknown data
 - Order dates are from 2023`;
     } else if (schema?.tables) {

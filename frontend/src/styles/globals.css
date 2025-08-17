@@ -9,7 +9,7 @@
   }
   
   .btn-primary {
-    @apply bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium;
+    @apply bg-[#2D7D32] text-white px-4 py-2 rounded-lg hover:bg-[#236627] transition-colors duration-200 font-medium;
   }
   
   .btn-secondary {
@@ -21,7 +21,7 @@
   }
   
   .input-primary {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-colors duration-200;
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D7D32] focus:border-[#2D7D32] outline-none transition-colors duration-200;
   }
 
   /* Custom scrollbar styles */

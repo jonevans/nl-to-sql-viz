@@ -6,7 +6,10 @@ class PostgresService {
   private securityService: SQLSecurityService;
 
   constructor() {
-    console.log('DATABASE_URL:', process.env.DATABASE_URL);
+    console.log('PostgresService initializing:');
+    console.log('  DB_NAME from env:', process.env.DB_NAME);
+    console.log('  DB_USER from env:', process.env.DB_USER);
+    console.log('  Using database:', process.env.DB_NAME || 'hardware_store_db');
     
     this.pool = new Pool({
       host: process.env.DB_HOST || 'localhost',

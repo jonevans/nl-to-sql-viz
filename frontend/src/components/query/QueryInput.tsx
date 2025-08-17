@@ -200,8 +200,8 @@ export const QueryInput: React.FC<QueryInputProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Header */}
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-red-100 rounded-lg">
-              <Database className="h-4 w-4 text-red-600" />
+            <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-lg">
+              <Database className="h-4 w-4 text-[#2D7D32]" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
@@ -225,7 +225,7 @@ export const QueryInput: React.FC<QueryInputProps> = ({
               rows={3}
               className={cn(
                 'w-full px-4 py-3 text-base border border-gray-300 rounded-lg resize-none',
-                'focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors duration-200',
+                'focus:ring-2 focus:ring-[#2D7D32] focus:border-[#2D7D32] transition-colors duration-200',
                 'placeholder-gray-400 disabled:bg-gray-50 disabled:text-gray-500',
                 'min-h-[80px] max-h-[200px]'
               )}
@@ -237,9 +237,9 @@ export const QueryInput: React.FC<QueryInputProps> = ({
               disabled={!localQuery.trim() || isProcessing || disabled}
               className={cn(
                 'absolute bottom-3 right-3 p-2 rounded-lg transition-all duration-200',
-                'bg-red-600 hover:bg-red-700 text-white',
+                'bg-[#2D7D32] hover:bg-[#236627] text-white',
                 'disabled:bg-gray-300 disabled:cursor-not-allowed',
-                'focus:ring-2 focus:ring-red-500 focus:ring-offset-2'
+                'focus:ring-2 focus:ring-[#2D7D32] focus:ring-offset-2'
               )}
             >
               {isProcessing ? (
@@ -291,7 +291,7 @@ export const QueryInput: React.FC<QueryInputProps> = ({
                   className={cn(
                     'w-full flex items-start space-x-3 px-3 py-2 text-left rounded-lg transition-colors duration-150',
                     'hover:bg-gray-50',
-                    selectedSuggestionIndex === index && 'bg-red-50 border border-red-200'
+                    selectedSuggestionIndex === index && 'bg-green-50 border border-green-200'
                   )}
                 >
                   <div className="flex-shrink-0 mt-1">

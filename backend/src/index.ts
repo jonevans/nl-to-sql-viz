@@ -3,6 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
+
+// CRITICAL: Load environment variables BEFORE any other imports that might use them
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
 import mongoose from 'mongoose';
 import winston from 'winston';
 
@@ -16,13 +21,12 @@ import suggestionsRoutes from './routes/suggestions';
 import favoritesRoutes from './routes/favorites';
 import analyzeRoutes from './routes/analyze';
 
-import path from 'path';
-dotenv.config({ path: path.join(__dirname, '../.env') });
-
 // Debug: log if environment variables are loaded
 console.log('Environment check:');
 console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Found' : 'Not found');
-console.log('DATABASE_URL:', process.env.DATABASE_URL || 'Not found');
+console.log('DB_NAME:', process.env.DB_NAME || 'Not found');
+console.log('DB_USER:', process.env.DB_USER || 'Not found');
+console.log('DB_HOST:', process.env.DB_HOST || 'Not found');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
