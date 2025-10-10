@@ -96,3 +96,7 @@ postgres-data/
 # Environment files - CRITICAL SECURITY
 .env.*
 !.env.example
+
+# Scripts with sensitive data (credentials, passwords)
+backend/scripts/user-credentials.txt
+**/user-credentials.txt

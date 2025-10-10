@@ -1,6 +1,9 @@
 import { Parser } from 'node-sql-parser';
 import pgFormat from 'pg-format';
 import { createError } from '../middleware/errorHandler';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('SQLSecurityService');
 
 interface ValidationResult {
   isValid: boolean;
@@ -111,7 +114,9 @@ export class SQLSecurityService {
     try {
       return pgFormat(sql, ...params);
     } catch (error: any) {
-      throw createError(400, `Query formatting failed: ${error.message}`);
+      logger.error('Query formatting failed', { error: error.message, sql: sql.substring(0, 100) });
+      // Generic error for user
+      throw createError(400, 'Query formatting failed. Please check your query syntax.');
     }
   }
 

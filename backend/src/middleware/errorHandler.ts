@@ -26,15 +26,28 @@ export const errorHandler = (
 ) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
+  const isProduction = process.env.NODE_ENV === 'production';
 
-  // Log error
+  // Sanitize request body to remove sensitive data before logging
+  const sanitizedBody = req.body ? { ...req.body } : {};
+  if (sanitizedBody.password) sanitizedBody.password = '[REDACTED]';
+  if (sanitizedBody.currentPassword) sanitizedBody.currentPassword = '[REDACTED]';
+  if (sanitizedBody.newPassword) sanitizedBody.newPassword = '[REDACTED]';
+
+  // Sanitize headers to remove authorization tokens
+  const sanitizedHeaders = req.headers ? { ...req.headers } : {};
+  if (sanitizedHeaders.authorization) sanitizedHeaders.authorization = '[REDACTED]';
+  if (sanitizedHeaders.cookie) sanitizedHeaders.cookie = '[REDACTED]';
+
+  // Log full error details (always logged regardless of environment)
   logger.error({
     message: err.message,
     stack: err.stack,
     url: req.url,
     method: req.method,
-    body: req.body,
-    headers: req.headers
+    body: sanitizedBody,
+    headers: sanitizedHeaders,
+    statusCode
   });
 
   // Handle specific error types
@@ -78,15 +91,28 @@ export const errorHandler = (
   // Database connection errors
   if (err.message.includes('ECONNREFUSED') || err.message.includes('connection')) {
     statusCode = 503;
-    message = 'Database connection error';
+    message = 'Service temporarily unavailable. Please try again later.';
   }
 
-  res.status(statusCode).json({
+  // In production, sanitize 500 errors to prevent information leakage
+  if (isProduction && statusCode === 500 && !message.match(/^(Registration failed|Login failed|Password update failed|Failed to generate SQL|Query execution failed|Failed to fetch|Query validation failed|Unable to generate SQL)/)) {
+    message = 'An unexpected error occurred. Please try again later.';
+  }
+
+  // Build response
+  const errorResponse: any = {
     error: message,
     timestamp: new Date().toISOString(),
-    path: req.path,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
+    path: req.path
+  };
+
+  // Only include stack trace in development
+  if (!isProduction) {
+    errorResponse.stack = err.stack;
+    errorResponse.details = err.message; // Original message in dev
+  }
+
+  res.status(statusCode).json(errorResponse);
 };
 
 export const asyncHandler = (fn: Function) => {

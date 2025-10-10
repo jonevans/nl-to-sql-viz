@@ -1,14 +1,39 @@
 'use client';
 
-import { Dashboard } from '@/components/dashboard/Dashboard';
+import { DashboardChat } from '@/components/dashboard/DashboardChat';
+import { LoginPage } from '@/components/auth/LoginPage';
 import { Toaster } from 'react-hot-toast';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#2D7D32]"></div>
+          <p className="mt-2 text-sm text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <DashboardChat />
+    </div>
+  );
+}
 
 export default function Home() {
   return (
-    <>
-      <div className="min-h-screen bg-gray-50 p-6">
-        <Dashboard />
-      </div>
+    <AuthProvider>
+      <AppContent />
       <Toaster
         position="top-right"
         toastOptions={{
@@ -34,6 +59,6 @@ export default function Home() {
           },
         }}
       />
-    </>
+    </AuthProvider>
   );
 }

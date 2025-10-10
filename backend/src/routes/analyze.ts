@@ -9,13 +9,21 @@ const router = express.Router();
 
 // Schema for analyze request
 const analyzeSchema = Joi.object({
-  data: Joi.array().items(Joi.object()).required().min(1),
-  columns: Joi.array().items(Joi.string()).required().min(1),
-  rowCount: Joi.number().integer().min(1).optional(),
+  data: Joi.array().items(Joi.object()).optional(), // Make optional for analysis-only questions
+  columns: Joi.array().items(Joi.string()).optional(), // Make optional for analysis-only questions
+  rowCount: Joi.number().integer().min(0).optional(),
   executionTime: Joi.number().min(0).optional(),
   query: Joi.string().optional(),
   originalQuery: Joi.string().optional(), // Add original natural language query
-  userId: Joi.string().optional()
+  userId: Joi.string().optional(),
+  conversationContext: Joi.array().items(Joi.object()).optional(), // For chat context
+  responseStyle: Joi.string().valid('structured', 'conversational').optional(), // Response format
+  questionType: Joi.string().valid('data_query', 'analysis_only').optional(), // New field for question type
+  dataTruncated: Joi.boolean().optional(), // Flag to indicate if data was truncated
+  fullRowCount: Joi.number().integer().min(0).optional(), // The actual total row count when data is truncated
+  isSummarized: Joi.boolean().optional(), // Flag to indicate if data is summarized
+  dataSummary: Joi.object().optional(), // Summarized dataset structure
+  summaryDescription: Joi.string().optional() // Human-readable summary description
 });
 
 // POST /api/analyze - Analyze query result data and suggest visualizations
@@ -23,29 +31,73 @@ router.post('/',
   llmRateLimiter,
   validateRequest(analyzeSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { data, columns, rowCount, executionTime, query, originalQuery, userId } = req.body;
+    console.log('[Analyze Endpoint] Received request:', {
+      hasData: !!req.body.data,
+      dataLength: req.body.data?.length,
+      columnsLength: req.body.columns?.length,
+      questionType: req.body.questionType,
+      isSummarized: req.body.isSummarized,
+      hasSummaryDescription: !!req.body.summaryDescription
+    });
 
-    // Generate visualization recommendations based on the data
+    const { data, columns, rowCount, executionTime, query, originalQuery, userId, conversationContext, responseStyle, questionType, dataTruncated, fullRowCount, isSummarized, dataSummary, summaryDescription } = req.body;
+
+    // Handle analysis-only questions differently
+    if (questionType === 'analysis_only') {
+      // For analysis-only questions, skip data analysis and go straight to conversation response
+      const summary = await generateConversationalResponse(originalQuery || '', conversationContext || [], responseStyle || 'conversational');
+      
+      res.json({
+        summary,
+        chartType: 'none',
+        reasoning: 'Analysis-only question - no data visualization needed',
+        confidence: 0.9,
+        configurations: {},
+        insights: [],
+        recommendations: [],
+        timestamp: new Date().toISOString(),
+        userId,
+        questionType: 'analysis_only'
+      });
+      return;
+    }
+
+    // For data queries, proceed with normal analysis
     const analysis = await analyzeQueryResult({
-      data,
-      columns,
-      rowCount: rowCount || data.length,
+      data: data || [],
+      columns: columns || [],
+      rowCount: rowCount || (data ? data.length : 0),
       executionTime: executionTime || 0,
       query: query || '',
-      originalQuery: originalQuery || ''
+      originalQuery: originalQuery || '',
+      conversationContext: conversationContext || [],
+      responseStyle: responseStyle || 'structured',
+      dataTruncated: dataTruncated || false,
+      fullRowCount: fullRowCount,
+      isSummarized: isSummarized || false,
+      dataSummary: dataSummary,
+      summaryDescription: summaryDescription
     });
 
     res.json({
       ...analysis,
       timestamp: new Date().toISOString(),
-      userId
+      userId,
+      questionType: 'data_query'
     });
   })
 );
 
 async function analyzeQueryResult(queryResult: any): Promise<any> {
-  const { data, columns, query, originalQuery } = queryResult;
-  
+  const { data, columns, query, originalQuery, conversationContext, responseStyle, dataTruncated, fullRowCount, isSummarized, dataSummary, summaryDescription } = queryResult;
+
+  console.log('[analyzeQueryResult] Starting analysis:', {
+    dataLength: data?.length,
+    columnsLength: columns?.length,
+    isSummarized,
+    hasSummaryDescription: !!summaryDescription
+  });
+
   // Basic analysis of the data structure
   const analysis = {
     chartType: 'table', // default
@@ -78,7 +130,20 @@ async function analyzeQueryResult(queryResult: any): Promise<any> {
     
     // Generate text summary if we have the original query
     if (originalQuery && originalQuery.trim()) {
-      analysis.summary = await generateDataSummary(originalQuery, data, columns);
+      // Pass the full row count if data was truncated, otherwise use data length
+      const actualRowCount = dataTruncated && fullRowCount ? fullRowCount : data.length;
+      analysis.summary = await generateDataSummary(
+        originalQuery,
+        data,
+        columns,
+        conversationContext,
+        responseStyle,
+        actualRowCount,
+        dataTruncated,
+        isSummarized,
+        dataSummary,
+        summaryDescription
+      );
     }
     
   } catch (error) {
@@ -271,28 +336,103 @@ function generateRecommendations(patterns: any, columnTypes: Record<string, stri
   return recommendations;
 }
 
-async function generateDataSummary(originalQuery: string, data: any[], columns: string[]): Promise<string> {
+async function generateDataSummary(
+  originalQuery: string,
+  data: any[],
+  columns: string[],
+  conversationContext?: any[],
+  responseStyle: string = 'structured',
+  actualRowCount?: number,
+  dataTruncated?: boolean,
+  isSummarized?: boolean,
+  dataSummary?: any,
+  summaryDescription?: string
+): Promise<string> {
   try {
+    console.log('[generateDataSummary] Called with:', {
+      originalQuery,
+      dataLength: data?.length,
+      columnsLength: columns?.length,
+      responseStyle,
+      actualRowCount,
+      dataTruncated,
+      isSummarized,
+      hasSummaryDescription: !!summaryDescription
+    });
+
     // Get LLM service instance
     const llmService = LLMService.getInstance();
+
+    // Prepare data for LLM - use summary if available
+    let dataForLLM = '';
+    const totalRows = actualRowCount || data.length;
+
+    if (isSummarized && dataSummary && summaryDescription) {
+      // Use the intelligent summary instead of raw data
+      dataForLLM = summaryDescription;
+      dataForLLM += `\n\nSample rows (${dataSummary.sampleRows?.length || 0} of ${totalRows}):\n`;
+      dataForLLM += JSON.stringify(dataSummary.sampleRows, null, 2);
+    } else if (data.length <= 10) {
+      // Small dataset - send all rows
+      dataForLLM = JSON.stringify(data, null, 2);
+      if (dataTruncated) {
+        dataForLLM += `\n[Note: Showing sample of ${data.length} rows from total of ${totalRows} rows]`;
+      }
+    } else {
+      // Medium dataset - show sample + statistics
+      const stats = generateDataStatistics(data, columns);
+      dataForLLM = `First 5 rows: ${JSON.stringify(data.slice(0, 5), null, 2)}\n`;
+      dataForLLM += `Total rows: ${totalRows}`;
+      if (dataTruncated) {
+        dataForLLM += ` (showing ${data.length} sample rows)`;
+      }
+      dataForLLM += `\n\nStatistics:\n${stats}`;
+    }
     
-    // Prepare statistical insights about the data
-    const stats = generateDataStatistics(data, columns);
+    // Build conversation context if provided
+    let contextString = '';
+    if (conversationContext && conversationContext.length > 0) {
+      contextString = '\n\nRecent Conversation:\n' + 
+        conversationContext.slice(-4)
+          .map(m => `${m.role}: ${m.content.substring(0, 100)}...`)
+          .join('\n');
+    }
     
-    // Prepare a concise version of the data for the LLM (limit to first 10 rows to avoid token limits)
-    const sampleData = data.slice(0, 10);
-    const dataPreview = JSON.stringify(sampleData, null, 2);
+    // Create prompt based on response style
+    let prompt = '';
     
-    // Create an enhanced prompt for professional data analysis
-    const prompt = `You are a senior data analyst providing insights for a hardware store business. The user asked: "${originalQuery}"
+    if (responseStyle === 'conversational') {
+      // Conversational style for chat interface
+      prompt = `You are a data analyst for Colony Hardware. Provide clear, professional responses to data queries.
+
+User's Question: "${originalQuery}"
+
+Results (${totalRows} rows):
+${dataForLLM}
+${contextString}
+
+Instructions:
+1. Answer directly with the key data points
+2. Format currency with $ and commas (e.g., $1,234,567.89)
+3. Format large numbers with commas (e.g., 12,345)
+4. Keep responses concise - 1-2 sentences for simple queries, 3-4 for complex ones
+5. NO emojis, exclamation points, or casual language
+6. NO filler phrases like "I've got", "right here", "impressive", "whopping"
+7. Start with the answer, not pleasantries
+8. If relevant, add ONE brief business insight at the end
+9. Use professional language but keep it simple
+
+Generate a professional response:`;
+    } else {
+      // Structured style for reports/dashboard
+      prompt = `You are a senior data analyst providing insights for a hardware store business. The user asked: "${originalQuery}"
 
 QUERY RESULTS:
-- Total rows: ${data.length}
+- Total rows: ${totalRows}
 - Columns: ${columns.join(', ')}
-- Sample data: ${dataPreview}
 
-DATA STATISTICS:
-${stats}
+${dataForLLM}
+${contextString}
 
 As a professional data analyst, provide a comprehensive analysis following this structure:
 
@@ -319,15 +459,37 @@ Provide 2-3 specific, actionable recommendations based on this data:
 Suggest 1-2 follow-up questions or analyses that would provide deeper insights.
 
 Keep each section concise but insightful. Use business language, not technical jargon. Focus on actionable insights that drive business decisions.`;
+    }
 
-    // Generate summary using the LLM service
-    const analysisResult = await llmService.analyzeData(data, originalQuery);
+    // Call OpenAI directly here instead of using the broken analyzeData method
+    const openai = llmService.openai;
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4-turbo-preview',
+      messages: [
+        { 
+          role: 'system', 
+          content: responseStyle === 'conversational' 
+            ? 'You are a professional data analyst. Be clear and direct.'
+            : 'You are a senior data analyst. Provide structured, professional analysis.'
+        },
+        { role: 'user', content: prompt }
+      ],
+      temperature: responseStyle === 'conversational' ? 0.3 : 0.3,
+      max_tokens: responseStyle === 'conversational' ? 200 : 500
+    });
     
-    return analysisResult.summary || 'Professional data analysis could not be generated at this time.';
-    
-  } catch (error) {
-    console.error('Summary generation failed:', error);
-    return `Analysis complete: Found ${data.length} result(s). Consider examining trends, comparing to benchmarks, and identifying actionable insights from this data.`;
+    const result = completion.choices[0]?.message?.content || 'Analysis could not be generated at this time.';
+    console.log('[generateDataSummary] Success, response length:', result.length);
+    return result;
+
+  } catch (error: any) {
+    console.error('[generateDataSummary] Failed with error:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data
+    });
+    const totalRows = actualRowCount || data.length;
+    return `Analysis complete: Found ${totalRows} result(s). Consider examining trends, comparing to benchmarks, and identifying actionable insights from this data.`;
   }
 }
 
@@ -361,5 +523,123 @@ function generateDataStatistics(data: any[], columns: string[]): string {
   
   return stats.join('\n');
 }
+
+async function generateConversationalResponse(
+  question: string,
+  conversationContext: any[],
+  responseStyle: string = 'conversational'
+): Promise<string> {
+  try {
+    const llmService = LLMService.getInstance();
+    
+    // Build context from recent conversation messages
+    let contextString = '';
+    if (conversationContext && conversationContext.length > 0) {
+      const recentMessages = conversationContext.slice(-6); // Get more context for analysis
+      contextString = 'Recent conversation:\n' + 
+        recentMessages
+          .map(m => {
+            let content = `${m.role}: ${m.content}`;
+            if (m.data) {
+              // Handle both old format (array) and new format (object with sample)
+              if (Array.isArray(m.data)) {
+                content += `\n  [Data: ${m.data.length} rows shown]`;
+              } else if (m.data.totalRows) {
+                content += `\n  [Data: ${m.data.totalRows} rows shown, sample: ${JSON.stringify(m.data.sample)}]`;
+              }
+            }
+            return content;
+          })
+          .join('\n');
+    }
+    
+    const prompt = `You are a helpful data analyst for Colony Hardware. The user is asking a follow-up question about data they've already seen in this conversation.
+
+User's Question: "${question}"
+
+${contextString}
+
+Instructions:
+1. This is an analysis/insight question, NOT a request for new data
+2. Base your response on the data and context from the conversation above
+3. Provide thoughtful analysis, explanations, or insights about the data they've already seen
+4. Be conversational and helpful - explain trends, patterns, or business implications
+5. If asked "why" something happened, provide reasonable business explanations
+6. If the context doesn't contain enough information to answer fully, acknowledge that and suggest what additional data might help
+7. Keep responses concise but insightful (2-4 sentences)
+8. Don't suggest running new queries - focus on analyzing what's already been shown
+
+Provide a helpful, analytical response:`;
+
+    const completion = await llmService.openai.chat.completions.create({
+      model: 'gpt-4-turbo-preview',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You are a helpful data analyst. Provide insightful analysis based on conversation context.'
+        },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 250
+    });
+    
+    const response = completion.choices[0]?.message?.content;
+    if (!response || response.trim().length === 0) {
+      return getIntelligentFallback(question, conversationContext);
+    }
+    
+    return response;
+    
+  } catch (error) {
+    console.error('Conversational response generation failed:', error);
+    return getIntelligentFallback(question, conversationContext);
+  }
+}
+
+function getIntelligentFallback(question: string, conversationContext: any[]): string {
+  // Check if this looks like a creative/generative request
+  const creativeTriggers = [
+    'email', 'write', 'draft', 'create', 'generate', 'compose', 'letter', 'message',
+    'sample', 'template', 'example', 'suggestion', 'recommend', 'proposal'
+  ];
+  
+  const isCreativeRequest = creativeTriggers.some(trigger => 
+    question.toLowerCase().includes(trigger)
+  );
+  
+  if (isCreativeRequest) {
+    // Look for recent data in conversation
+    const hasRecentData = conversationContext && conversationContext.some(msg => 
+      msg.role === 'assistant' && (
+        (Array.isArray(msg.data) && msg.data.length > 0) || 
+        (msg.data && msg.data.totalRows > 0)
+      )
+    );
+    
+    if (hasRecentData) {
+      if (question.toLowerCase().includes('email')) {
+        return `I understand you'd like help creating an email based on our recent data analysis, but I'm currently focused on data insights rather than content generation. However, you can use the customer data we just analyzed to craft a personalized message highlighting their purchase patterns and suggesting complementary products from our inventory.`;
+      }
+      return `I see you're looking for help creating content based on our data analysis. While I specialize in data insights rather than content generation, you can use the information we just discussed to create your own targeted messaging.`;
+    }
+  }
+  
+  // Check if this is asking for analysis/explanations
+  const analysisTriggers = ['why', 'how', 'what does', 'explain', 'insight', 'trend', 'pattern', 'meaning'];
+  const isAnalysisRequest = analysisTriggers.some(trigger => 
+    question.toLowerCase().includes(trigger)
+  );
+  
+  if (isAnalysisRequest) {
+    return `I'd like to provide deeper analysis on that, but I'm having trouble processing the context right now. Could you rephrase your question or be more specific about what aspect you'd like me to analyze from our recent data?`;
+  }
+  
+  // Generic fallback
+  return `I understand your question, but I'm having trouble providing a detailed response right now. Could you try rephrasing or asking about specific data you'd like to see?`;
+}
+
+// Export the analyze function for internal use (bypasses HTTP/auth)
+export { analyzeQueryResult, generateConversationalResponse };
 
 export default router;

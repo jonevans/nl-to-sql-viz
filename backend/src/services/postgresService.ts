@@ -1,25 +1,30 @@
 import { Pool, PoolClient } from 'pg';
 import { SQLSecurityService } from './sqlSecurityService';
+import { createLogger } from '../utils/logger';
+import config from '../config';
+
+const logger = createLogger('PostgresService');
 
 class PostgresService {
   private pool: Pool;
   private securityService: SQLSecurityService;
 
   constructor() {
-    console.log('PostgresService initializing:');
-    console.log('  DB_NAME from env:', process.env.DB_NAME);
-    console.log('  DB_USER from env:', process.env.DB_USER);
-    console.log('  Using database:', process.env.DB_NAME || 'hardware_store_db');
-    
+    logger.info('PostgresService initializing', {
+      dbName: config.database.postgres.name,
+      dbUser: config.database.postgres.user,
+      dbHost: config.database.postgres.host
+    });
+
     this.pool = new Pool({
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432'),
-      database: process.env.DB_NAME || 'hardware_store_db',
-      user: process.env.DB_USER || 'jevans',
-      password: process.env.DB_PASSWORD,
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      host: config.database.postgres.host,
+      port: config.database.postgres.port,
+      database: config.database.postgres.name,
+      user: config.database.postgres.user,
+      password: config.database.postgres.password,
+      max: config.database.postgres.maxConnections,
+      idleTimeoutMillis: config.database.postgres.idleTimeout,
+      connectionTimeoutMillis: config.database.postgres.connectionTimeout,
     });
 
     this.securityService = SQLSecurityService.getInstance();
@@ -33,9 +38,9 @@ class PostgresService {
       const client = await this.pool.connect();
       await client.query('SELECT NOW()');
       client.release();
-      console.log('✅ Connected to PostgreSQL successfully');
-    } catch (error) {
-      console.error('❌ Failed to connect to PostgreSQL:', error);
+      logger.info('Connected to PostgreSQL successfully');
+    } catch (error: any) {
+      logger.error('Failed to connect to PostgreSQL', { error: error.message });
     }
   }
 
@@ -54,20 +59,20 @@ class PostgresService {
     let client: PoolClient | null = null;
 
     try {
-      console.log(`Validating SQL: ${sql.substring(0, 100)}...`);
-      
+      logger.debug('Validating SQL', { sqlPreview: sql.substring(0, 100) });
+
       // Step 1: Comprehensive security validation
       const validation = await this.securityService.validateAndSanitizeSQL(sql);
       
       if (!validation.isValid) {
-        const errorMessage = `SQL security validation failed:\n${validation.errors.join('\n')}`;
-        console.error(errorMessage);
-        throw new Error(errorMessage);
+        logger.error('SQL security validation failed', { errors: validation.errors });
+        // Generic error for user, detailed logs for debugging
+        throw new Error('Query validation failed. Please ensure your query follows security guidelines.');
       }
 
       // Step 2: Use sanitized SQL
       const sanitizedSQL = validation.sanitizedSQL!;
-      console.log(`Executing sanitized SQL with complexity: ${validation.complexity}`);
+      logger.debug('Executing sanitized SQL', { complexity: validation.complexity });
 
       // Step 3: Execute with connection pooling
       client = await this.pool.connect();
@@ -76,7 +81,10 @@ class PostgresService {
       const result = await client.query(sanitizedSQL, params);
       const executionTime = Date.now() - startTime;
 
-      console.log(`Query executed successfully in ${executionTime}ms, returned ${result.rowCount} rows`);
+      logger.info('Query executed successfully', {
+        executionTime: `${executionTime}ms`,
+        rowCount: result.rowCount
+      });
 
       return {
         data: result.rows,
@@ -91,13 +99,17 @@ class PostgresService {
       };
     } catch (error: any) {
       const executionTime = Date.now() - startTime;
-      console.error(`SQL Execution Error after ${executionTime}ms:`, error.message);
+      logger.error('SQL execution error', {
+        executionTime: `${executionTime}ms`,
+        error: error.message
+      });
       
       // Provide minimal error information to prevent information leakage
-      if (error.message.includes('security validation failed')) {
-        throw error; // Security errors can be shown
+      if (error.message.includes('validation failed')) {
+        throw error; // Validation errors (already generic) can be shown
       } else {
-        throw new Error('Query execution failed. Please check your SQL syntax and try again.');
+        // Generic error for database issues
+        throw new Error('Query execution failed. Please try again or rephrase your question.');
       }
     } finally {
       if (client) {
@@ -106,14 +118,14 @@ class PostgresService {
     }
   }
 
-  async validateSQL(sql: string): Promise<{ 
-    valid: boolean; 
-    message: string; 
+  async validateSQL(sql: string): Promise<{
+    valid: boolean;
+    message: string;
     complexity?: number;
     warnings?: string[];
   }> {
     try {
-      console.log(`Validating SQL: ${sql.substring(0, 100)}...`);
+      logger.debug('Validating SQL', { sqlPreview: sql.substring(0, 100) });
       
       // Use comprehensive security validation
       const validation = await this.securityService.validateAndSanitizeSQL(sql);
@@ -139,13 +151,14 @@ class PostgresService {
         };
       } catch (error: any) {
         client.release();
-        return { 
-          valid: false, 
-          message: `PostgreSQL validation failed: ${error.message}` 
+        logger.error('PostgreSQL validation failed', { error: error.message });
+        return {
+          valid: false,
+          message: 'Query validation failed. Please check your SQL syntax.'
         };
       }
     } catch (error: any) {
-      console.error('SQL validation error:', error);
+      logger.error('SQL validation error', { error: error.message });
       return { 
         valid: false, 
         message: 'Validation failed. Please check your SQL syntax.' 
@@ -196,8 +209,9 @@ class PostgresService {
       client.release();
       return { tables };
     } catch (error: any) {
-      console.error('Schema fetch error:', error);
-      throw new Error(`Failed to fetch schema: ${error.message}`);
+      logger.error('Schema fetch error', { error: error.message, stack: error.stack });
+      // Generic error for user
+      throw new Error('Failed to fetch database schema. Please try again later.');
     }
   }
 

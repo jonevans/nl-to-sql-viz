@@ -10,9 +10,12 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 import mongoose from 'mongoose';
 import winston from 'winston';
+import config, { validateConfig } from './config';
 
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
+import { authenticate } from './middleware/authMiddleware';
+import authRoutes from './routes/auth';
 import queryRoutes from './routes/query';
 import executeRoutes from './routes/execute';
 import visualizeRoutes from './routes/visualize';
@@ -20,42 +23,29 @@ import schemaRoutes from './routes/schema';
 import suggestionsRoutes from './routes/suggestions';
 import favoritesRoutes from './routes/favorites';
 import analyzeRoutes from './routes/analyze';
+import conversationRoutes from './routes/conversation';
 
-// Debug: log if environment variables are loaded
-console.log('Environment check:');
-console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Found' : 'Not found');
-console.log('DB_NAME:', process.env.DB_NAME || 'Not found');
-console.log('DB_USER:', process.env.DB_USER || 'Not found');
-console.log('DB_HOST:', process.env.DB_HOST || 'Not found');
+// Validate configuration on startup
+const configValidation = validateConfig();
+if (!configValidation.valid) {
+  console.error('❌ Configuration validation failed:');
+  configValidation.errors.forEach(error => console.error(`  - ${error}`));
+  if (config.server.env === 'production') {
+    process.exit(1);
+  } else {
+    console.warn('⚠️  Continuing in development mode with configuration warnings');
+  }
+}
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
-// Logger setup
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' }),
-  ],
-});
-
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.simple()
-  }));
-}
+// Import centralized logger
+import logger from './utils/logger';
 
 // Database connection
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/nlsql_db';
-    await mongoose.connect(mongoURI);
+    await mongoose.connect(config.database.mongodb.uri);
     logger.info('Connected to MongoDB');
   } catch (error) {
     logger.error('MongoDB connection failed:', error);
@@ -70,19 +60,38 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(rateLimiter);
 
-// Health check
+// Health check (public)
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// API Routes
-app.use('/api/query', queryRoutes);
-app.use('/api/execute', executeRoutes);
-app.use('/api/visualize', visualizeRoutes);
-app.use('/api/schema', schemaRoutes);
-app.use('/api/suggestions', suggestionsRoutes);
-app.use('/api/favorites', favoritesRoutes);
-app.use('/api/analyze', analyzeRoutes);
+// Public routes (no authentication required)
+app.use('/api/auth', authRoutes);
+
+// Protected routes (authentication required)
+// Note: For development/testing, you can temporarily disable authentication
+// by setting AUTH_ENABLED=false in .env
+if (config.auth.enabled) {
+  logger.info('Authentication is ENABLED for protected routes');
+  app.use('/api/query', authenticate, queryRoutes);
+  app.use('/api/execute', authenticate, executeRoutes);
+  app.use('/api/visualize', authenticate, visualizeRoutes);
+  app.use('/api/schema', authenticate, schemaRoutes);
+  app.use('/api/suggestions', authenticate, suggestionsRoutes);
+  app.use('/api/favorites', authenticate, favoritesRoutes);
+  app.use('/api/analyze', authenticate, analyzeRoutes);
+  app.use('/api/conversation', authenticate, conversationRoutes);
+} else {
+  logger.warn('⚠️  Authentication is DISABLED - all routes are public!');
+  app.use('/api/query', queryRoutes);
+  app.use('/api/execute', executeRoutes);
+  app.use('/api/visualize', visualizeRoutes);
+  app.use('/api/schema', schemaRoutes);
+  app.use('/api/suggestions', suggestionsRoutes);
+  app.use('/api/favorites', favoritesRoutes);
+  app.use('/api/analyze', analyzeRoutes);
+  app.use('/api/conversation', conversationRoutes);
+}
 
 // Error handling middleware
 app.use(errorHandler);
@@ -95,9 +104,9 @@ app.use('*', (req, res) => {
 // Start server
 const startServer = async () => {
   await connectDB();
-  
-  app.listen(PORT, () => {
-    logger.info(`Server running on port ${PORT}`);
+
+  app.listen(config.server.port, () => {
+    logger.info(`Server running on port ${config.server.port} in ${config.server.env} mode`);
   });
 };
 
