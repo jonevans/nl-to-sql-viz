@@ -22,6 +22,9 @@ export default function AdminStats() {
     startDate: '',
     endDate: ''
   });
+  const [viewingEndpoint, setViewingEndpoint] = useState<string | null>(null);
+  const [endpointData, setEndpointData] = useState<any>(null);
+  const [endpointLoading, setEndpointLoading] = useState(false);
 
   useEffect(() => {
     fetchSummary();
@@ -92,6 +95,27 @@ export default function AdminStats() {
 
   const applyDateFilter = () => {
     fetchSummary();
+  };
+
+  const viewEndpoint = async (endpoint: string) => {
+    setViewingEndpoint(endpoint);
+    setEndpointLoading(true);
+    setEndpointData(null);
+
+    try {
+      const params = new URLSearchParams();
+      if (dateRange.startDate) params.append('startDate', dateRange.startDate);
+      if (dateRange.endDate) params.append('endDate', dateRange.endDate);
+
+      const response = await api.get(`${endpoint}?${params.toString()}`);
+      setEndpointData(response.data);
+    } catch (error: any) {
+      console.error('Failed to fetch endpoint data:', error);
+      toast.error('Failed to load endpoint data');
+      setEndpointData({ error: error.message || 'Failed to fetch data' });
+    } finally {
+      setEndpointLoading(false);
+    }
   };
 
   return (
@@ -206,26 +230,56 @@ export default function AdminStats() {
             ].map((item) => (
               <div key={item.endpoint} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-start justify-between">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-semibold text-gray-900">{item.title}</h3>
                     <p className="text-sm text-gray-600 mt-1">{item.description}</p>
                     <code className="text-xs text-[#2D7D32] bg-green-50 px-2 py-1 rounded mt-2 inline-block">
                       GET {item.endpoint}
                     </code>
                   </div>
-                  <a
-                    href={`http://localhost:8000${item.endpoint}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 text-sm bg-[#2D7D32] text-white rounded hover:bg-[#1B5E20] transition-colors"
+                  <button
+                    onClick={() => viewEndpoint(item.endpoint)}
+                    className="px-4 py-2 text-sm bg-[#2D7D32] text-white rounded hover:bg-[#1B5E20] transition-colors whitespace-nowrap"
                   >
-                    View
-                  </a>
+                    View Data
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Endpoint Data Modal */}
+        {viewingEndpoint && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="bg-[#2D7D32] text-white p-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold">API Response: {viewingEndpoint}</h3>
+                <button
+                  onClick={() => setViewingEndpoint(null)}
+                  className="text-white hover:bg-[#1B5E20] rounded p-1"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6 overflow-auto flex-1">
+                {endpointLoading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2D7D32]"></div>
+                  </div>
+                ) : endpointData ? (
+                  <pre className="bg-gray-50 p-4 rounded-lg overflow-auto text-xs">
+                    {JSON.stringify(endpointData, null, 2)}
+                  </pre>
+                ) : (
+                  <p className="text-gray-500">No data available</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Export Section */}
         <div className="bg-white rounded-lg shadow p-6">
