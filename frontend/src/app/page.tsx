@@ -17,10 +17,21 @@ function AppContent() {
   useEffect(() => {
     const checkPocTermsStatus = async () => {
       if (isAuthenticated && user) {
+        console.log('Checking POC terms for user:', user);
+        console.log('pocTermsAccepted value:', user.pocTermsAccepted);
+        console.log('pocTermsAccepted type:', typeof user.pocTermsAccepted);
+
         // Check if user has accepted POC terms
-        if (!user.pocTermsAccepted) {
+        // Check for undefined, false, or explicitly false
+        if (user.pocTermsAccepted !== true) {
+          console.log('User has NOT accepted terms, showing modal');
           setShowPocTerms(true);
+        } else {
+          console.log('User has already accepted terms');
         }
+        setCheckingTerms(false);
+      } else if (!isLoading && !isAuthenticated) {
+        // Not authenticated, stop checking
         setCheckingTerms(false);
       }
     };
