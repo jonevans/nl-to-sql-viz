@@ -8,6 +8,8 @@ export interface IUser extends Document {
   company?: string;
   isActive: boolean;
   lastLogin?: Date;
+  pocTermsAccepted?: boolean;
+  pocTermsAcceptedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,6 +47,13 @@ const UserSchema = new Schema<IUser>({
     default: true
   },
   lastLogin: {
+    type: Date
+  },
+  pocTermsAccepted: {
+    type: Boolean,
+    default: false
+  },
+  pocTermsAcceptedAt: {
     type: Date
   }
 }, {

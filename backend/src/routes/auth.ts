@@ -71,7 +71,8 @@ router.post('/login',
         name: result.user.name,
         role: result.user.role,
         company: result.user.company,
-        lastLogin: result.user.lastLogin
+        lastLogin: result.user.lastLogin,
+        pocTermsAccepted: result.user.pocTermsAccepted || false
       },
       token: result.token
     });
@@ -122,6 +123,32 @@ router.post('/logout',
     // JWT is stateless - just return success
     // Client should remove token from storage
     res.json({ message: 'Logout successful' });
+  })
+);
+
+// POST /api/auth/accept-poc-terms - Accept POC terms
+router.post('/accept-poc-terms',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    await authService.acceptPocTerms(req.user!.userId);
+    res.json({ message: 'POC terms accepted successfully' });
+  })
+);
+
+// GET /api/auth/poc-terms-status - Check if user has accepted POC terms
+router.get('/poc-terms-status',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = await authService.getUserById(req.user!.userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      accepted: user.pocTermsAccepted || false,
+      acceptedAt: user.pocTermsAcceptedAt
+    });
   })
 );
 

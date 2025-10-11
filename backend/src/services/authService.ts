@@ -210,4 +210,18 @@ export class AuthService {
     user.isActive = true;
     await user.save();
   }
+
+  /**
+   * Accept POC terms
+   */
+  async acceptPocTerms(userId: string): Promise<void> {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw createError(404, 'User not found');
+    }
+    user.pocTermsAccepted = true;
+    user.pocTermsAcceptedAt = new Date();
+    await user.save();
+    logger.info('POC terms accepted', { userId, email: user.email });
+  }
 }

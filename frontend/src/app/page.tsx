@@ -1,14 +1,54 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { DashboardChat } from '@/components/dashboard/DashboardChat';
 import { LoginPage } from '@/components/auth/LoginPage';
+import PocTermsModal from '@/components/auth/PocTermsModal';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 function AppContent() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const [showPocTerms, setShowPocTerms] = useState(false);
+  const [checkingTerms, setCheckingTerms] = useState(true);
 
-  if (isLoading) {
+  useEffect(() => {
+    const checkPocTermsStatus = async () => {
+      if (isAuthenticated && user) {
+        // Check if user has accepted POC terms
+        if (!user.pocTermsAccepted) {
+          setShowPocTerms(true);
+        }
+        setCheckingTerms(false);
+      }
+    };
+
+    if (!isLoading) {
+      checkPocTermsStatus();
+    }
+  }, [isAuthenticated, isLoading, user]);
+
+  const handleAcceptTerms = async () => {
+    try {
+      await api.post('/auth/accept-poc-terms');
+      setShowPocTerms(false);
+      toast.success('Terms accepted successfully');
+      // Reload user data
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to accept terms:', error);
+      toast.error('Failed to accept terms. Please try again.');
+    }
+  };
+
+  const handleDeclineTerms = () => {
+    // Redirect to Impact Networking
+    window.location.href = 'https://impactnetworking.com';
+  };
+
+  if (isLoading || checkingTerms) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -21,6 +61,17 @@ function AppContent() {
 
   if (!isAuthenticated) {
     return <LoginPage />;
+  }
+
+  // Show POC terms modal if user hasn't accepted yet
+  if (showPocTerms) {
+    return (
+      <PocTermsModal
+        onAccept={handleAcceptTerms}
+        onDecline={handleDeclineTerms}
+        userName={user?.name}
+      />
+    );
   }
 
   return (

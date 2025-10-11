@@ -9,6 +9,7 @@ interface User {
   name: string;
   role: string;
   company?: string;
+  pocTermsAccepted?: boolean;
 }
 
 interface AuthContextType {
