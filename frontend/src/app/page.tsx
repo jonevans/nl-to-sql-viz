@@ -43,10 +43,19 @@ function AppContent() {
 
   const handleAcceptTerms = async () => {
     try {
-      await api.post('/auth/accept-poc-terms');
+      await api.post('/api/auth/accept-poc-terms');
+
+      // Update user in localStorage
+      const storedUser = localStorage.getItem('auth_user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        userData.pocTermsAccepted = true;
+        localStorage.setItem('auth_user', JSON.stringify(userData));
+      }
+
       setShowPocTerms(false);
       toast.success('Terms accepted successfully');
-      // Reload user data
+      // Reload to refresh the user state
       window.location.reload();
     } catch (error) {
       console.error('Failed to accept terms:', error);
