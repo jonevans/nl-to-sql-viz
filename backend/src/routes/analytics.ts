@@ -137,7 +137,7 @@ router.get('/top-queries', authorize('admin'), async (req: Request, res: Respons
           }
         }
       },
-      { $sort: { count: -1 } },
+      { $sort: { count: -1 as -1 } },
       { $limit: parseInt(limit as string) }
     ];
 
@@ -182,7 +182,7 @@ router.get('/daily-usage', authorize('admin'), async (req: Request, res: Respons
           avgExecutionTime: { $avg: '$sqlExecutionTime' }
         }
       },
-      { $sort: { _id: -1 } },
+      { $sort: { _id: -1 as -1 } },
       { $limit: parseInt(limit as string) }
     ];
 
@@ -224,7 +224,7 @@ router.get('/user-activity', authorize('admin'), async (req: Request, res: Respo
           lastActivity: { $max: '$timestamp' }
         }
       },
-      { $sort: { totalQueries: -1 } },
+      { $sort: { totalQueries: -1 as -1 } },
       { $limit: parseInt(limit as string) }
     ];
 
