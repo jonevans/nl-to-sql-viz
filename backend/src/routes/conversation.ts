@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { ConversationService } from '../services/conversationService';
+import { SessionLog } from '../models/SessionLog';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('ConversationRoutes');
@@ -42,6 +43,32 @@ router.post('/:conversationId/message', async (req: Request, res: Response) => {
     });
 
     const result = await conversationService.processMessage(conversationId, message);
+
+    // Log session for analytics (fire and forget - don't block response)
+    if (req.user) {
+      SessionLog.create({
+        userId: req.user.userId,
+        userEmail: req.user.email,
+        userName: req.user.email, // We'll need to get actual name from user record
+        conversationId,
+        userQuery: message,
+        generatedSQL: result.sql || 'N/A',
+        sqlExecutionTime: result.metadata?.executionTime || 0,
+        rowCount: result.metadata?.rowCount || 0,
+        wasSuccessful: !result.metadata?.error,
+        errorMessage: result.metadata?.error,
+        naturalLanguageResponse: result.response,
+        responseType: result.metadata?.error ? 'error' : (result.data ? 'data' : 'analysis'),
+        wasFollowUp: result.metadata?.isFollowUp || false,
+        previousContext: result.metadata?.previousQuery,
+        timestamp: new Date(),
+        sessionDate: new Date(new Date().setHours(0, 0, 0, 0)), // Date only for grouping
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent')
+      }).catch(err => {
+        logger.error('Failed to log session', { error: err.message });
+      });
+    }
 
     res.json({
       conversationId,

@@ -24,6 +24,7 @@ import suggestionsRoutes from './routes/suggestions';
 import favoritesRoutes from './routes/favorites';
 import analyzeRoutes from './routes/analyze';
 import conversationRoutes from './routes/conversation';
+import analyticsRoutes from './routes/analytics';
 
 // Validate configuration on startup
 const configValidation = validateConfig();
@@ -81,6 +82,7 @@ if (config.auth.enabled) {
   app.use('/api/favorites', authenticate, favoritesRoutes);
   app.use('/api/analyze', authenticate, analyzeRoutes);
   app.use('/api/conversation', authenticate, conversationRoutes);
+  app.use('/api/analytics', authenticate, analyticsRoutes); // Admin only
 } else {
   logger.warn('⚠️  Authentication is DISABLED - all routes are public!');
   app.use('/api/query', queryRoutes);
@@ -91,6 +93,7 @@ if (config.auth.enabled) {
   app.use('/api/favorites', favoritesRoutes);
   app.use('/api/analyze', analyzeRoutes);
   app.use('/api/conversation', conversationRoutes);
+  app.use('/api/analytics', analyticsRoutes); // Admin only
 }
 
 // Error handling middleware
