@@ -322,12 +322,16 @@ Provide a 2-3 sentence summary of the results.`;
 Question: "${question}"${contextInfo}
 
 Classify as:
-- "NEEDS_DATA" if the question asks for specific information from a database (sales figures, customer lists, product data, etc.)
+- "NEEDS_DATA" if the question asks for specific information from a database (sales figures, customer lists, product data, counts, totals, sums, dollar amounts, etc.)
 - "ANALYSIS_ONLY" if the question asks for explanation, insights, interpretation, or analysis of data that was likely already shown
 
 Examples:
 - "Show me sales by month" → NEEDS_DATA
-- "What are the top customers?" → NEEDS_DATA  
+- "What are the top customers?" → NEEDS_DATA
+- "What is the total dollar value of those sales?" → NEEDS_DATA
+- "How much did we sell in total?" → NEEDS_DATA
+- "What's the sum of all orders?" → NEEDS_DATA
+- "Get the total revenue" → NEEDS_DATA
 - "Why is March so high?" → ANALYSIS_ONLY
 - "What does this trend mean?" → ANALYSIS_ONLY
 - "Explain these results" → ANALYSIS_ONLY
