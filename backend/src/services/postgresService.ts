@@ -10,22 +10,39 @@ class PostgresService {
   private securityService: SQLSecurityService;
 
   constructor() {
-    logger.info('PostgresService initializing', {
-      dbName: config.database.postgres.name,
-      dbUser: config.database.postgres.user,
-      dbHost: config.database.postgres.host
-    });
+    logger.info('PostgresService initializing');
 
-    this.pool = new Pool({
-      host: config.database.postgres.host,
-      port: config.database.postgres.port,
-      database: config.database.postgres.name,
-      user: config.database.postgres.user,
-      password: config.database.postgres.password,
-      max: config.database.postgres.maxConnections,
-      idleTimeoutMillis: config.database.postgres.idleTimeout,
-      connectionTimeoutMillis: config.database.postgres.connectionTimeout,
-    });
+    // Use DATABASE_URL if provided (for Render/production), otherwise use individual params
+    const databaseUrl = process.env.DATABASE_URL;
+
+    if (databaseUrl) {
+      logger.info('Using DATABASE_URL for connection');
+      this.pool = new Pool({
+        connectionString: databaseUrl,
+        ssl: {
+          rejectUnauthorized: false // Required for Render PostgreSQL
+        },
+        max: config.database.postgres.maxConnections,
+        idleTimeoutMillis: config.database.postgres.idleTimeout,
+        connectionTimeoutMillis: config.database.postgres.connectionTimeout,
+      });
+    } else {
+      logger.info('Using individual connection parameters', {
+        dbName: config.database.postgres.name,
+        dbUser: config.database.postgres.user,
+        dbHost: config.database.postgres.host
+      });
+      this.pool = new Pool({
+        host: config.database.postgres.host,
+        port: config.database.postgres.port,
+        database: config.database.postgres.name,
+        user: config.database.postgres.user,
+        password: config.database.postgres.password,
+        max: config.database.postgres.maxConnections,
+        idleTimeoutMillis: config.database.postgres.idleTimeout,
+        connectionTimeoutMillis: config.database.postgres.connectionTimeout,
+      });
+    }
 
     this.securityService = SQLSecurityService.getInstance();
 
