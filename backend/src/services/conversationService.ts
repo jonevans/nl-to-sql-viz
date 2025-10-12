@@ -500,14 +500,20 @@ CRITICAL INSTRUCTIONS FOR FOLLOW-UP QUERIES:
 1. This is a FOLLOW-UP question referencing previous results
 2. MAINTAIN ALL FILTERS from previous query in your WHERE clause
 3. Required filters to include: ${filterList || 'none'}
-4. Examples:
-   - If previous query had "state = 'MI'" and user asks "show me the ones from January", use: WHERE state = 'MI' AND EXTRACT(MONTH FROM order_date) = 1
-   - If previous query had "customer_key = 19520 AND state = 'MI'" and user asks "just January", use: WHERE customer_key = 19520 AND state = 'MI' AND EXTRACT(MONTH FROM order_date) = 1
-   - DO NOT drop any existing filters unless user explicitly says to (e.g., "ignore the state filter")
-5. For month filters, use: EXTRACT(MONTH FROM order_date) = <month_number> (January=1, February=2, etc.)
-6. For state filters, use 2-letter codes: 'MI' for Michigan, 'OH' for Ohio, etc.
-7. Combine ALL filters with AND in the WHERE clause
-8. If asking "which products?" or "which ones?", JOIN with products table to show product_description instead of product_key`;
+4. IMPORTANT - Query Type Detection:
+   - "Show me", "List", "Display", "Get" = Return ROWS of data (SELECT columns FROM...)
+   - "What is", "How many", "Total", "Average", "Sum" = Return aggregate (SELECT COUNT/AVG/SUM...)
+   - Previous query was ${conversation.lastSQL?.includes('AVG(') || conversation.lastSQL?.includes('COUNT(') || conversation.lastSQL?.includes('SUM(') ? 'an aggregate' : 'returning rows'}
+   - If user says "show me the ones from January", they want ROWS, not AVG() - change query type!
+5. Examples:
+   - Previous: "What is the average?" Current: "Show me the ones from January"
+     → Change from AVG() to SELECT with WHERE state = 'MI' AND EXTRACT(MONTH FROM order_date) = 1
+   - Previous: "Show me Michigan sales" Current: "What's the average for those?"
+     → Change from SELECT to AVG() with WHERE state = 'MI'
+6. For month filters, use: EXTRACT(MONTH FROM order_date) = <month_number> (January=1, February=2, etc.)
+7. For state filters, use 2-letter codes: 'MI' for Michigan, 'OH' for Ohio, etc.
+8. Combine ALL filters with AND in the WHERE clause
+9. If asking "which products?" or "which ones?", JOIN with products table to show product_description instead of product_key`;
       } else {
         // Standalone query - don't carry over filters
         contextPrompt = currentQuery;
