@@ -421,11 +421,17 @@ export class ConversationService {
       };
 
     } catch (error: any) {
-      logger.error('Conversation processing error', { error: error.message, stack: error.stack });
-      
+      logger.error('Conversation processing error', {
+        error: error.message,
+        stack: error.stack,
+        conversationId,
+        userMessage: userMessage.substring(0, 100)
+      });
+
       // Ensure we always respond, even on complete failure
-      const fallbackResponse = `I'm experiencing some technical difficulties right now. Could you please try your question again? If you're looking for specific data, try rephrasing your request, or if you're asking for analysis, let me know what specific aspect you'd like me to focus on.`;
-      
+      // TEMP: Always show error details for debugging
+      const fallbackResponse = `I'm experiencing some technical difficulties. Error: ${error.message}`;
+
       // Add error message to conversation
       const errorMsg: ConversationMessage = {
         id: Date.now().toString(),
@@ -440,12 +446,12 @@ export class ConversationService {
       };
       conversation.messages.push(errorMsg);
       conversation.updatedAt = new Date();
-      
+
       return {
         response: fallbackResponse,
         sql: '',
         data: [],
-        metadata: { error: true, message: error.message }
+        metadata: { error: true, message: error.message, stack: error.stack }
       };
     }
   }
