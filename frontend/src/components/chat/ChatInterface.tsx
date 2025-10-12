@@ -60,7 +60,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ className }) => {
   const initConversation = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/conversation/new', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/api/conversation/new`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +92,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ className }) => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`http://localhost:8000/api/conversation/${conversationId}/message`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/api/conversation/${conversationId}/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
