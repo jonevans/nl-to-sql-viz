@@ -114,6 +114,51 @@ app.get('/diagnostic', async (req, res) => {
   res.json(results);
 });
 
+// Test query endpoint (public) - tests full query flow
+app.get('/test-query', async (req, res) => {
+  const results: any = {
+    timestamp: new Date().toISOString(),
+    steps: {}
+  };
+
+  try {
+    // Step 1: Test OpenAI SQL generation
+    results.steps.step1_llm = { status: 'TESTING' };
+    const { LLMService } = await import('./services/llmService');
+    const llmService = LLMService.getInstance();
+
+    const sqlResponse = await llmService.generateSQL({
+      query: 'How many sales in Michigan?',
+      schema: { tables: [] }
+    });
+    results.steps.step1_llm = {
+      status: 'OK',
+      generatedSQL: sqlResponse.sql.substring(0, 100) + '...',
+      executionTime: sqlResponse.executionTime
+    };
+
+    // Step 2: Test PostgreSQL execution
+    results.steps.step2_postgres = { status: 'TESTING' };
+    const { postgresService } = await import('./services/postgresService');
+    const testResult = await postgresService.executeQuery('SELECT COUNT(*) as test_count FROM sales_orders LIMIT 1');
+    results.steps.step2_postgres = {
+      status: 'OK',
+      rowCount: testResult.rowCount,
+      executionTime: testResult.executionTime
+    };
+
+    results.overall = 'ALL_TESTS_PASSED';
+  } catch (error: any) {
+    results.overall = 'FAILED';
+    results.error = {
+      message: error.message,
+      stack: error.stack?.split('\n').slice(0, 5)
+    };
+  }
+
+  res.json(results);
+});
+
 // Public routes (no authentication required)
 app.use('/api/auth', authRoutes);
 
