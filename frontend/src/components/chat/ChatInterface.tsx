@@ -305,10 +305,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ className }) => {
                 {message.role === 'assistant' && message.data && message.data.length > 0 && message.data.length <= 20 && (
                   <div className="mt-4 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className={cn(
-                        "text-xs",
-                        message.role === 'user' ? "text-white opacity-75" : "text-gray-500"
-                      )}>
+                      <span className="text-xs text-gray-500">
                         {message.metadata?.rowCount} results • {message.metadata?.executionTime}ms
                       </span>
                       <div className="flex space-x-2">
