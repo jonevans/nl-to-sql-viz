@@ -66,6 +66,55 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Diagnostic endpoint (public) - tests all services
+app.get('/diagnostic', async (req, res) => {
+  const results: any = {
+    timestamp: new Date().toISOString(),
+    services: {}
+  };
+
+  // Test MongoDB
+  try {
+    await mongoose.connection.db.admin().ping();
+    results.services.mongodb = { status: 'OK', connected: mongoose.connection.readyState === 1 };
+  } catch (error: any) {
+    results.services.mongodb = { status: 'ERROR', error: error.message };
+  }
+
+  // Test PostgreSQL
+  try {
+    const { PostgresService } = await import('./services/postgresService');
+    const postgresService = PostgresService.getInstance();
+    const result = await postgresService.executeQuery('SELECT 1 as test');
+    results.services.postgresql = { status: 'OK', test: result.rows[0] };
+  } catch (error: any) {
+    results.services.postgresql = { status: 'ERROR', error: error.message };
+  }
+
+  // Test OpenAI
+  try {
+    const { LLMService } = await import('./services/llmService');
+    const llmService = LLMService.getInstance();
+    // Just check if we can create the service (doesn't make API call)
+    results.services.openai = {
+      status: 'CONFIGURED',
+      hasApiKey: !!config.openai.apiKey,
+      apiKeyPrefix: config.openai.apiKey ? config.openai.apiKey.substring(0, 7) + '...' : 'NOT_SET'
+    };
+  } catch (error: any) {
+    results.services.openai = { status: 'ERROR', error: error.message };
+  }
+
+  // Environment check
+  results.environment = {
+    nodeEnv: config.server.env,
+    authEnabled: config.auth.enabled,
+    port: config.server.port
+  };
+
+  res.json(results);
+});
+
 // Public routes (no authentication required)
 app.use('/api/auth', authRoutes);
 
