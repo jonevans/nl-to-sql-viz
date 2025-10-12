@@ -475,25 +475,31 @@ export class ConversationService {
 
       if (isLikelyFollowUp) {
         // This looks like a follow-up question - provide context
+        const filterList = Object.entries(conversation.activeFilters || {})
+          .map(([key, value]) => `${key} = ${JSON.stringify(value)}`)
+          .join(', ');
+
         contextPrompt = `Convert this natural language query to SQL.
 
 Context from previous query:
 - Previous question: "${lastUserMessage?.content || ''}"
 - Previous SQL used: ${conversation.lastSQL}
-- Active filters from previous query: ${JSON.stringify(conversation.activeFilters || {})}
+- Active filters from previous query: ${filterList || 'none'}
 
 Current question: "${currentQuery}"
 
-Instructions:
-- This appears to be a FOLLOW-UP question referencing previous results from "those" sales/products/customers
-- MAINTAIN ALL FILTERS from previous query UNLESS the user explicitly changes one
-- Active filters to keep: ${JSON.stringify(conversation.activeFilters || {})}
-- If user asks about "those sales in March", ADD month filter but KEEP product_id, city, customer_key, etc.
-- If asking "which products?" or "which ones?", show product details with the same filters
-- If asking for comparison (e.g., "what about May?"), REPLACE month but KEEP all other filters
-- Remember: Michigan is stored as 'MI', not 'Michigan'
-- For month filters, use: EXTRACT(MONTH FROM order_date) = <month_number>
-- CRITICAL: When maintaining filters, include ALL of them in the WHERE clause, not just new ones`;
+CRITICAL INSTRUCTIONS FOR FOLLOW-UP QUERIES:
+1. This is a FOLLOW-UP question referencing previous results
+2. MAINTAIN ALL FILTERS from previous query in your WHERE clause
+3. Required filters to include: ${filterList || 'none'}
+4. Examples:
+   - If previous query had "state = 'MI'" and user asks "show me the ones from January", use: WHERE state = 'MI' AND EXTRACT(MONTH FROM order_date) = 1
+   - If previous query had "customer_key = 19520 AND state = 'MI'" and user asks "just January", use: WHERE customer_key = 19520 AND state = 'MI' AND EXTRACT(MONTH FROM order_date) = 1
+   - DO NOT drop any existing filters unless user explicitly says to (e.g., "ignore the state filter")
+5. For month filters, use: EXTRACT(MONTH FROM order_date) = <month_number> (January=1, February=2, etc.)
+6. For state filters, use 2-letter codes: 'MI' for Michigan, 'OH' for Ohio, etc.
+7. Combine ALL filters with AND in the WHERE clause
+8. If asking "which products?" or "which ones?", JOIN with products table to show product_description instead of product_key`;
       } else {
         // Standalone query - don't carry over filters
         contextPrompt = currentQuery;

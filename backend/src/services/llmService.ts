@@ -170,7 +170,15 @@ Query Intent Guidelines:
 - "How many sales" or "Total sales" or "Sum of sales" = Use COUNT(*) or SUM()
 - "Show me" / "List" / "Display" / "Get" = User wants to SEE the records, return columns
 - When asking about a specific customer's purchases, return individual order details unless explicitly asking for totals
-- Default to showing detail unless question explicitly asks for aggregates (count, total, sum, average)`;
+- Default to showing detail unless question explicitly asks for aggregates (count, total, sum, average)
+
+Product Query Guidelines:
+- When returning sales data, ALWAYS JOIN with products table to show product_description instead of product_key
+- Use: SELECT p.product_description, so.order_date, so.ext_price, so.quantity_ordered
+       FROM sales_orders so
+       JOIN products p ON so.product_key = p.product_key
+- DO NOT return product_key numbers to users - they want to see actual product names
+- Same for customer queries - JOIN with customers table to show customer_name instead of customer_key`;
     } else if (schema?.tables) {
       prompt += '\n\nDatabase Schema:\n';
       for (const table of schema.tables) {
@@ -329,9 +337,11 @@ Examples:
 - "Show me sales by month" → NEEDS_DATA
 - "What are the top customers?" → NEEDS_DATA
 - "What is the total dollar value of those sales?" → NEEDS_DATA
+- "What is the average order value?" → NEEDS_DATA
 - "How much did we sell in total?" → NEEDS_DATA
 - "What's the sum of all orders?" → NEEDS_DATA
 - "Get the total revenue" → NEEDS_DATA
+- "What's the average price?" → NEEDS_DATA
 - "Why is March so high?" → ANALYSIS_ONLY
 - "What does this trend mean?" → ANALYSIS_ONLY
 - "Explain these results" → ANALYSIS_ONLY
