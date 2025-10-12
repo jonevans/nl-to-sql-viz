@@ -83,8 +83,7 @@ app.get('/diagnostic', async (req, res) => {
 
   // Test PostgreSQL
   try {
-    const { PostgresService } = await import('./services/postgresService');
-    const postgresService = PostgresService.getInstance();
+    const { postgresService } = await import('./services/postgresService');
     const result = await postgresService.executeQuery('SELECT 1 as test');
     results.services.postgresql = { status: 'OK', test: result.rows[0] };
   } catch (error: any) {
