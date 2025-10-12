@@ -470,10 +470,18 @@ export class ConversationService {
       const lastUserMessage = recentMessages.filter(m => m.role === 'user').pop();
 
       // Check if current query seems like it's related to previous context
-      const followUpKeywords = ['those', 'them', 'these', 'that', 'it', 'which ones', 'same', 'also'];
+      const followUpKeywords = ['those', 'them', 'these', 'that', 'it', 'which ones', 'same', 'also', 'the ones', 'just the', 'only the'];
       const isLikelyFollowUp = followUpKeywords.some(keyword => currentQuery.toLowerCase().includes(keyword));
 
-      if (isLikelyFollowUp) {
+      // Also check if this is adding a temporal filter to existing results
+      const temporalKeywords = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+      const hasTemporalFilter = temporalKeywords.some(month => currentQuery.toLowerCase().includes(month));
+      const isShortQuery = currentQuery.trim().split(' ').length <= 6; // Short queries like "show me just the ones from January" are likely follow-ups
+
+      // If it's a short query with temporal filter and we have existing filters, treat as follow-up
+      const isTemporalFollowUp = hasTemporalFilter && isShortQuery && conversation.activeFilters && Object.keys(conversation.activeFilters).length > 0;
+
+      if (isLikelyFollowUp || isTemporalFollowUp) {
         // This looks like a follow-up question - provide context
         const filterList = Object.entries(conversation.activeFilters || {})
           .map(([key, value]) => `${key} = ${JSON.stringify(value)}`)
