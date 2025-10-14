@@ -173,4 +173,20 @@ router.post('/admin/activate/:userId',
   })
 );
 
+// POST /api/auth/admin/reset-poc-terms - Reset POC terms by email (admin only)
+router.post('/admin/reset-poc-terms',
+  authenticate,
+  authorize('admin'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    await authService.resetPocTermsByEmail(email);
+    res.json({ message: 'POC terms reset successfully', email });
+  })
+);
+
 export default router;

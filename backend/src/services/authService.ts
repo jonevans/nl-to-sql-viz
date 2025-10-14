@@ -224,4 +224,18 @@ export class AuthService {
     await user.save();
     logger.info('POC terms accepted', { userId, email: user.email });
   }
+
+  /**
+   * Reset POC terms acceptance for a user by email
+   */
+  async resetPocTermsByEmail(email: string): Promise<void> {
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      throw createError(404, 'User not found');
+    }
+    user.pocTermsAccepted = false;
+    user.pocTermsAcceptedAt = undefined;
+    await user.save();
+    logger.info('POC terms reset', { userId: user._id, email: user.email });
+  }
 }
