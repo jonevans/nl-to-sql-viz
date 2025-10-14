@@ -189,4 +189,16 @@ router.post('/admin/reset-poc-terms',
   })
 );
 
+// GET /api/auth/admin/reset-poc-terms/:email - Reset POC terms by email URL param (admin only)
+router.get('/admin/reset-poc-terms/:email',
+  authenticate,
+  authorize('admin'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { email } = req.params;
+
+    await authService.resetPocTermsByEmail(email);
+    res.json({ message: 'POC terms reset successfully', email });
+  })
+);
+
 export default router;
