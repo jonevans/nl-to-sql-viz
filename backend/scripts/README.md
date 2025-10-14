@@ -1,44 +1,41 @@
-# Database Seeding Scripts
+# POC Reset Script
 
-## ⚠️ SECURITY WARNING
+This script resets the POC demo by clearing analytics and creating fresh user accounts.
 
-**NEVER commit actual passwords to git!**
+## Setup
 
-This directory contains database seeding scripts. All passwords should be:
-- Stored in environment variables
-- Loaded from a secure config file (not committed)
-- Generated securely for production use
+1. **Copy the example credentials file:**
+   ```bash
+   cp .env.poc-users.example .env.poc-users
+   ```
 
-## Usage
+2. **Edit `.env.poc-users` with real credentials** (this file is gitignored)
 
-### Seed Users
+3. **Run the script:**
+   ```bash
+   npm run reset:poc
+   ```
 
-```bash
-# Set passwords via environment variables
-export ADMIN_PASSWORD="your-secure-admin-password"
-export USER_PASSWORD="your-secure-user-password"
+## What It Does
 
-# Run the seed script
-npm run seed-users
-```
+1. ✅ Clears all session logs (analytics reset)
+2. ✅ Removes all existing users
+3. ✅ Creates 2 admin users
+4. ✅ Creates 8 regular users
+5. ✅ Prints summary with credentials
 
-### Production Deployment
+## Security
 
-For production environments:
-1. Create users through the admin interface
-2. Use strong, randomly generated passwords
-3. Force password change on first login
-4. Never use seed scripts with hardcoded credentials
+- ⚠️ **NEVER commit `.env.poc-users`** - it contains real passwords
+- ✅ The file is already in `.gitignore`
+- ✅ Only `.env.poc-users.example` (with fake credentials) is committed
+- ✅ Script loads credentials from environment variables
 
-## Files to Keep Private
+## For Production (MongoDB Atlas)
 
-- `user-credentials.txt` - Should NEVER be committed (already in .gitignore)
-- Any files containing actual passwords or API keys
-- Database connection strings with embedded credentials
+The script connects to whatever MongoDB is in your `.env`:
 
-## Best Practices
+- **Local:** `MONGODB_URI=mongodb://localhost:27017/colony-hardware-viz`
+- **Atlas:** `MONGODB_URI=mongodb+srv://...`
 
-1. Use environment variables for all sensitive data
-2. Rotate passwords regularly
-3. Use different passwords for each environment (dev/staging/prod)
-4. Enable 2FA for admin accounts when available
+Just make sure your `.env` points to the right database before running.

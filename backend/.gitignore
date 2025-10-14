@@ -42,4 +42,8 @@ build/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db
+Thumbs.db.env.poc-users
+
+# POC user credentials (but allow .example files)
+.env.poc-users
+!.env.poc-users.example

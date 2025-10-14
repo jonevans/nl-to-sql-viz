@@ -11,7 +11,8 @@
     "test:watch": "jest --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
-    "seed:users": "ts-node scripts/seed-users.ts"
+    "seed:users": "ts-node scripts/seed-users.ts",
+    "reset:poc": "ts-node scripts/reset-and-seed-poc.ts"
   },
   "dependencies": {
     "@types/bcrypt": "^6.0.0",
