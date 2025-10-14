@@ -281,6 +281,55 @@ export default function AdminStats() {
           </div>
         )}
 
+        {/* Reset POC Terms Section */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Reset POC Terms</h2>
+          <p className="text-gray-600 mb-4">
+            Reset POC terms acceptance for a specific user (they'll see the terms modal again on next login)
+          </p>
+          <div className="flex gap-4 items-end">
+            <div className="flex-1 max-w-md">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                User Email Address
+              </label>
+              <input
+                type="email"
+                id="resetEmail"
+                placeholder="user@example.com"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D7D32]"
+              />
+            </div>
+            <button
+              onClick={async () => {
+                const emailInput = document.getElementById('resetEmail') as HTMLInputElement;
+                const email = emailInput?.value.trim();
+
+                if (!email) {
+                  toast.error('Please enter an email address');
+                  return;
+                }
+
+                if (!email.includes('@')) {
+                  toast.error('Please enter a valid email address');
+                  return;
+                }
+
+                try {
+                  await api.get(`/api/auth/admin/reset-poc-terms/${encodeURIComponent(email)}`);
+                  toast.success(`POC terms reset for ${email}`);
+                  emailInput.value = '';
+                } catch (error: any) {
+                  console.error('Failed to reset POC terms:', error);
+                  toast.error(error.response?.data?.error || 'Failed to reset POC terms');
+                }
+              }}
+              className="px-6 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors whitespace-nowrap"
+            >
+              Reset Terms
+            </button>
+          </div>
+        </div>
+
         {/* Export Section */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Export Data</h2>
