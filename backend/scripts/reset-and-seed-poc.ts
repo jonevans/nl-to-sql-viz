@@ -11,6 +11,8 @@ dotenv.config({ path: path.join(__dirname, '../.env.poc-users') });
 // Import models
 import { User } from '../src/models/User';
 import { SessionLog } from '../src/models/SessionLog';
+import Query from '../src/models/Query';
+import Favorite from '../src/models/Favorite';
 
 // Load users from environment variables
 const ADMIN_USERS = [
@@ -95,10 +97,17 @@ async function resetAndSeed() {
     await mongoose.connect(mongoUri);
     console.log('✅ Connected to MongoDB\n');
 
-    // Step 1: Clear all session logs
-    console.log('🗑️  Clearing all session logs...');
+    // Step 1: Clear all analytics data
+    console.log('🗑️  Clearing all analytics data...');
+
     const logsDeleted = await SessionLog.deleteMany({});
-    console.log(`✅ Deleted ${logsDeleted.deletedCount} session logs\n`);
+    console.log(`  ✅ Deleted ${logsDeleted.deletedCount} session logs`);
+
+    const queriesDeleted = await Query.deleteMany({});
+    console.log(`  ✅ Deleted ${queriesDeleted.deletedCount} queries`);
+
+    const favoritesDeleted = await Favorite.deleteMany({});
+    console.log(`  ✅ Deleted ${favoritesDeleted.deletedCount} favorites\n`);
 
     // Step 2: Clear all existing users
     console.log('🗑️  Clearing all existing users...');
@@ -128,11 +137,11 @@ async function resetAndSeed() {
 
     // Summary
     console.log('📊 Summary:');
-    console.log('  ✅ Session logs cleared');
-    console.log('  ✅ Users reset');
+    console.log('  ✅ All analytics cleared (session logs, queries, favorites)');
+    console.log('  ✅ All users reset');
     console.log(`  ✅ ${ADMIN_USERS.length} admin users created`);
     console.log(`  ✅ ${REGULAR_USERS.length} regular users created`);
-    console.log('\n🎉 POC Reset Complete!\n');
+    console.log('\n🎉 POC Reset Complete! Clean slate ready for demo.\n');
 
     console.log('📋 Admin Users:');
     ADMIN_USERS.forEach(u => {
