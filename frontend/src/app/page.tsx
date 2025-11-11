@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { DashboardChat } from '@/components/dashboard/DashboardChat';
 import { LoginPage } from '@/components/auth/LoginPage';
+import { PocEndedPage } from '@/components/auth/PocEndedPage';
 import PocTermsModal from '@/components/auth/PocTermsModal';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -80,7 +81,10 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage />;
+    // POC has ended - show announcement page instead of login
+    return <PocEndedPage />;
+    // To restore login functionality, uncomment the line below and comment out PocEndedPage
+    // return <LoginPage />;
   }
 
   // Show POC terms modal if user hasn't accepted yet
