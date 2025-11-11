@@ -70,12 +70,6 @@ export const PocEndedPage: React.FC = () => {
               </a>
             </div>
           </div>
-
-          <div className="mt-8 pt-8 border-t border-gray-200">
-            <div className="text-center text-sm text-gray-500">
-              <p>Colony Hardware - A Division of Impact Networking</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>
