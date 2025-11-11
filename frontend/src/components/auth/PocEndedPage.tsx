@@ -47,15 +47,17 @@ export const PocEndedPage: React.FC = () => {
 
             <div className="space-y-4 text-gray-600">
               <p className="text-lg">
-                Thank you for participating in the Colony Hardware Sales Advisor pilot program.
+                Thank you for participating in the Sales Advisor pilot program.
               </p>
               <p>
-                The proof of concept period has concluded. We appreciate your valuable feedback
-                and engagement during this trial phase.
+                This proof of concept phase has concluded. Your feedback has been invaluable
+                in shaping the future of this platform.
+              </p>
+              <p className="text-lg font-medium text-gray-900">
+                Stay tuned for updates on the full release.
               </p>
               <p>
-                If you have any questions or would like to discuss future opportunities,
-                please contact your Colony Hardware representative.
+                For questions, please contact your Colony Hardware representative.
               </p>
             </div>
 
@@ -64,7 +66,7 @@ export const PocEndedPage: React.FC = () => {
                 href="https://impactnetworking.com"
                 className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#2D7D32] hover:bg-[#246428] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2D7D32] transition-colors"
               >
-                Visit Colony Hardware
+                Visit Impact Networking
               </a>
             </div>
           </div>
